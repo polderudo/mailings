@@ -1,0 +1,12 @@
+/app
+/tmp/
+/go_build_app
+/assets/bin/tailwindcss
+data/local.yaml
+/data/local.yaml
+*_templ.go
+/.env
+/assets/css/output.css
+/assets/css/sources.generated.css
+
+.gograph/

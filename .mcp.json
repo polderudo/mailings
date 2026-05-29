@@ -1,0 +1,19 @@
+{
+    "mcpServers": {
+        "context7": {
+            "command": "npx",
+            "args": ["context7-mcp@latest"],
+            "env": {
+                "DEFAULT_MINIMUM_TOKENS": "10000"
+            }
+        },
+        "playwright": {
+            "command": "npx",
+            "args": ["@playwright/mcp@latest", "--browser", "chrome"]
+        },
+        "gograph": {
+            "command": "gograph",
+            "args": ["mcp", "./"]
+        }
+    }
+}
