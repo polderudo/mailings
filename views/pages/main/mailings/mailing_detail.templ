@@ -7,6 +7,7 @@ import (
 	. "app/views/layout"
 	"strconv"
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uidropdown "github.com/nakami-lounge-GmbH/ui-components/dropdown"
 	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
 	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
 	breadcrumb "github.com/templui/templui/components/breadcrumb"
@@ -17,6 +18,34 @@ type MailingNewFormData struct {
 	Templates []*mq.MailTemplate
 	Lists     []*mq.MailList
 	Domains   []*mq.MailDomain
+}
+
+// templateOptions/listOptions/domainOptions bauen die Dropdown-Optionen für das
+// Mailing-Anlegen-Formular. Value ist jeweils die ID (passend zum FK-Form-Feld),
+// Label der Anzeigename. Die Reihenfolge übernimmt die Sortierung aus dem Handler
+// (ID absteigend → neueste zuerst).
+func templateOptions(ts []*mq.MailTemplate) []uidropdown.Option {
+	out := make([]uidropdown.Option, 0, len(ts))
+	for _, t := range ts {
+		out = append(out, uidropdown.Option{Label: t.Name, Value: strconv.Itoa(int(t.ID))})
+	}
+	return out
+}
+
+func listOptions(ls []*mq.MailList) []uidropdown.Option {
+	out := make([]uidropdown.Option, 0, len(ls))
+	for _, l := range ls {
+		out = append(out, uidropdown.Option{Label: l.Name, Value: strconv.Itoa(int(l.ID))})
+	}
+	return out
+}
+
+func domainOptions(ds []*mq.MailDomain) []uidropdown.Option {
+	out := make([]uidropdown.Option, 0, len(ds))
+	for _, d := range ds {
+		out = append(out, uidropdown.Option{Label: d.Sender, Value: strconv.Itoa(int(d.ID))})
+	}
+	return out
 }
 
 type MailingDetailData struct {
@@ -77,34 +106,37 @@ templ MailingNewPage(lang string, data MailingNewFormData) {
 						@uiform.Label(uiform.LabelProps{For: "template_id"}) {
 							{ Trl(ctx, L.Mailings.Template) }
 						}
-						<select id="template_id" name="template_id" required class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring">
-							<option value="">{ Trl(ctx, L.Mailings.PleasePickATemplate) }</option>
-							for _, t := range data.Templates {
-								<option value={ strconv.Itoa(int(t.ID)) }>{ t.Name }</option>
-							}
-						</select>
+						@uidropdown.Dropdown(uidropdown.Props{
+							ID:          "template_id",
+							Name:        "template_id",
+							Required:    true,
+							Placeholder: Trl(ctx, L.Mailings.PleasePickATemplate),
+							Options:     templateOptions(data.Templates),
+						})
 					}
 					@uiform.Item() {
 						@uiform.Label(uiform.LabelProps{For: "list_id"}) {
 							{ Trl(ctx, L.Mailings.EmailList) }
 						}
-						<select id="list_id" name="list_id" required class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring">
-							<option value="">{ Trl(ctx, L.Mailings.PleasePickAnEmailList) }</option>
-							for _, l := range data.Lists {
-								<option value={ strconv.Itoa(int(l.ID)) }>{ l.Name }</option>
-							}
-						</select>
+						@uidropdown.Dropdown(uidropdown.Props{
+							ID:          "list_id",
+							Name:        "list_id",
+							Required:    true,
+							Placeholder: Trl(ctx, L.Mailings.PleasePickAnEmailList),
+							Options:     listOptions(data.Lists),
+						})
 					}
 					@uiform.Item() {
 						@uiform.Label(uiform.LabelProps{For: "domain_id"}) {
 							{ Trl(ctx, L.Mailings.Sender) }
 						}
-						<select id="domain_id" name="domain_id" required class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring">
-							<option value="">{ Trl(ctx, L.Mailings.PleasePickASender) }</option>
-							for _, d := range data.Domains {
-								<option value={ strconv.Itoa(int(d.ID)) }>{ d.Sender }</option>
-							}
-						</select>
+						@uidropdown.Dropdown(uidropdown.Props{
+							ID:          "domain_id",
+							Name:        "domain_id",
+							Required:    true,
+							Placeholder: Trl(ctx, L.Mailings.PleasePickASender),
+							Options:     domainOptions(data.Domains),
+						})
 					}
 					<div class="flex justify-end">
 						@uibutton.Button(uibutton.Props{

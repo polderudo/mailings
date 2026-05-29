@@ -53,21 +53,22 @@ func (m *api) MailingsPage(c *mw.UserContext) error {
 func (m *api) MailingNewPage(c *mw.UserContext) error {
 	ctx := context.Background()
 
+	// Sortierung: ID absteigend → die zuletzt angelegten Einträge stehen oben.
 	templates, err := mq.MailTemplates.Query(
-		sm.OrderBy(mq.MailTemplates.Columns.Name),
+		sm.OrderBy(mq.MailTemplates.Columns.ID).Desc(),
 	).All(ctx, db.DBob)
 	if err != nil {
 		return err
 	}
 	lists, err := mq.MailLists.Query(
-		sm.OrderBy(mq.MailLists.Columns.Name),
+		sm.OrderBy(mq.MailLists.Columns.ID).Desc(),
 	).All(ctx, db.DBob)
 	if err != nil {
 		return err
 	}
 	domains, err := mq.MailDomains.Query(
 		sm.Where(mq.MailDomains.Columns.IsActive.EQ(psql.Arg(true))),
-		sm.OrderBy(mq.MailDomains.Columns.Sender),
+		sm.OrderBy(mq.MailDomains.Columns.ID).Desc(),
 	).All(ctx, db.DBob)
 	if err != nil {
 		return err
