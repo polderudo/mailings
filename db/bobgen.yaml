@@ -1,0 +1,41 @@
+psql:
+  driver: "github.com/jackc/pgx/v5/stdlib"
+
+type_system: "github.com/aarondl/opt"
+
+no_tests: true
+wipe: true
+
+tags:
+  - json
+relation_tag: "R"
+no_back_referencing: true
+
+struct_tag_casing: "snake"
+plugins:
+  dbinfo:
+    disabled: false
+    pkgname: "dbinfo"
+    destination: "mq/dbinfo"
+  enums:
+    disabled: false
+    pkgname: "enums"
+    destination: "mq/enums"
+  models:
+    disabled: false
+    pkgname: "mq"
+    destination: "mq"
+  factory:
+    disabled: false
+    pkgname: "factory"
+    destination: "mq/factory"
+  dberrors:
+    disabled: false
+    pkgname: "dberrors"
+    destination: "mq/dberrors"
+  where:
+    disabled: false
+  loaders:
+    disabled: false
+  joins:
+    disabled: false

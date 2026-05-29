@@ -1,0 +1,76 @@
+IsDevSystem: true
+BindLocalhost: false
+ShowDebugWindow: true
+UseHTTPs: false
+HTTPSKeyFile: "~/.ssh/dev_key.pem"
+HTTPSCertFile: "~/.ssh/dev_cert.pem"
+
+Port: 3000
+JWTSecreteKey: "mPPP79UGyayWaDk34eWoQIn9XGxwjdgQtofsm9L4"
+JWTTokenDurationMinutes: 2880
+ApplicationName: Mailings (dev)
+MediaDir: ./media
+LoginValidForever: true
+
+ApplicationAdmins: ['udo@nakami.de']
+SystemLangISOCode: "de"
+SensibleDataNotCrypt: true
+
+DB:
+  User: mailings
+  Password: mailings123
+  Host: localhost
+  Port: 5433
+  Schema: mailings
+
+WebURL:
+  WebURL: http://localhost:3000/
+  WebURLLogin: http://localhost:3000/auth/login
+  CreatePassword: http://localhost:3000/password_create/%s
+  EmailValidate: http://localhost:3000/email_validate/%s
+  APIUrl: http://localhost:3000/api
+
+MailConfig:
+  Host: mh.nakami.de
+  Port: 1025
+  User:
+  Password:
+  Sender: noreply@nakami.de
+  Insecure: true
+  UseSSL: false
+  NoAuth: true
+
+LogWebToConsole: true
+LogWebToDebug: true
+Logging:
+  FileName: mailings.log
+  FileSizeMB: 5
+  MaxBackups: 5
+  Compress: true
+  LogDebug: true
+  Disabled: false
+  AlwaysShowDebugInConsole: true
+
+  ErrorLogging:
+    FileName: mailings_err.log
+    FileSizeMB: 5
+    MaxBackups: 5
+    Compress: true
+    Disabled: false
+
+  WebLogging:
+    FileName: mailings_web.log
+    FileSizeMB: 5
+    MaxBackups: 5
+    Compress: true
+    Disabled: false
+
+  DebugLogging:
+    FileName: mailings_dbg.log
+    FileSizeMB: 5
+    MaxBackups: 1
+    Compress: true
+    Disabled: false
+
+Company:
+  Name: "Mailings"

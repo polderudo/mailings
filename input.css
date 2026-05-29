@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* Sources: scan templ/js files for Tailwind classes */
+@source "./views/**/*.templ";
+@source "./ui-components/**/*.templ";
+@source "./ui-components/**/*.js";
+@import "./assets/css/sources.generated.css";
+
+/* ui-components: includes theme-defaults.css with templUI default values */
+@import "./ui-components/index.css";
+@import "./ui-components/button/button-tokens.css";
+
+/* Brand colors: VKB overrides — loaded after defaults, wins the cascade */
+@import "./assets/css/vkb-brand-colors.css";
+
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --breakpoint-3xl: 1600px;
+  --breakpoint-4xl: 2000px;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-error: var(--error);
+  --color-vkb-link: var(--vkb-link);
+  --color-vkb-link-hover: var(--vkb-link-hover);
+}
+
+@layer components {
+  .bg-primary {
+    @apply bg-[color:var(--primary)];
+  }
+
+  .text-primary {
+    @apply text-[color:var(--primary)];
+  }
+
+  .text-primary-foreground {
+    @apply text-[color:var(--primary-foreground)];
+  }
+
+  .border-primary {
+    @apply border-[color:var(--primary)];
+  }
+
+  .ring-primary {
+    @apply ring-[color:var(--primary)];
+  }
+
+  .bg-secondary {
+    @apply bg-[color:var(--secondary)];
+  }
+
+  .text-secondary {
+    @apply text-[color:var(--secondary)];
+  }
+
+  .text-secondary-foreground {
+    @apply text-[color:var(--secondary-foreground)];
+  }
+
+  .border-secondary {
+    @apply border-[color:var(--secondary)];
+  }
+
+  .ring-secondary {
+    @apply ring-[color:var(--secondary)];
+  }
+
+  .bg-accent {
+    @apply bg-[color:var(--accent)];
+  }
+
+  .text-accent {
+    @apply text-[color:var(--accent)];
+  }
+
+  .text-accent-foreground {
+    @apply text-[color:var(--accent-foreground)];
+  }
+
+  .border-accent {
+    @apply border-[color:var(--accent)];
+  }
+
+  .bg-muted {
+    @apply bg-[color:var(--muted)];
+  }
+
+  .text-muted {
+    @apply text-[color:var(--muted)];
+  }
+
+  .text-muted-foreground {
+    @apply text-[color:var(--muted-foreground)];
+  }
+
+  .border-muted {
+    @apply border-[color:var(--muted)];
+  }
+
+  .bg-destructive {
+    @apply bg-[color:var(--destructive)];
+  }
+
+  .text-destructive {
+    @apply text-[color:var(--destructive)];
+  }
+
+  .border-destructive {
+    @apply border-[color:var(--destructive)];
+  }
+
+  .bg-info {
+    @apply bg-[color:var(--info)];
+  }
+
+  .text-info {
+    @apply text-[color:var(--info)];
+  }
+
+  .border-info {
+    @apply border-[color:var(--info)];
+  }
+
+  .bg-success {
+    @apply bg-[color:var(--success)];
+  }
+
+  .text-success {
+    @apply text-[color:var(--success)];
+  }
+
+  .border-success {
+    @apply border-[color:var(--success)];
+  }
+
+  .bg-warning {
+    @apply bg-[color:var(--warning)];
+  }
+
+  .text-warning {
+    @apply text-[color:var(--warning)];
+  }
+
+  .border-warning {
+    @apply border-[color:var(--warning)];
+  }
+
+  .bg-error {
+    @apply bg-[color:var(--error)];
+  }
+
+  .text-error {
+    @apply text-[color:var(--error)];
+  }
+
+  .border-error {
+    @apply border-[color:var(--error)];
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-muted-foreground) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-muted-foreground);
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-foreground);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+[x-cloak] {
+  display: none !important;
+}

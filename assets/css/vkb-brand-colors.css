@@ -1,0 +1,116 @@
+:root {
+  /* Primary */
+  --vkb-primary-01-default: #397A94;
+  --vkb-primary-02-hover: #336E85;
+  --vkb-primary-03-active: #397A94;
+  --vkb-primary-04-visited: #9CBCC9;
+  --vkb-primary-05-disabled: #C4D7DF;
+
+  /* Secondary */
+  --vkb-secondary-01-default: #024589;
+  --vkb-secondary-02-hover: #012C57;
+  --vkb-secondary-03-active: #024589;
+  --vkb-secondary-04-visited: #678EB5;
+  --vkb-secondary-05-disabled: #87A9CC;
+
+  /* Font */
+  --vkb-body: #1B1D1E;
+  --vkb-text-placeholder: #6C757B;
+  --vkb-link: #397A94;
+  --vkb-link-hover: #336E85;
+  --vkb-headline: #1B1D1E;
+  --vkb-subtitle: #1B1D1E;
+  --vkb-error-font: #D90000;
+  --vkb-body-inverted: #FFFFFF;
+  --vkb-headline-inverted: #FFFFFF;
+
+  /* Background (Farbwelt) */
+  --vkb-hellblau: #E7EFFB;
+  --vkb-hellgrau: #F0F5F7;
+  --vkb-hellgruen: #E4F2EA;
+  --vkb-hellpetrol: #D8E5E6;
+
+  /* Action */
+  --vkb-success: #14885E;
+  --vkb-warning: #EC672F;
+  --vkb-error: #9D253C;
+  --vkb-info: #D7E5F8;
+
+  /* Neutral */
+  --vkb-white: #FFFFFF;
+  --vkb-black: #000000;
+
+  /* Focus */
+  --vkb-focus-light: #0047FF;
+  --vkb-focus-dark: #88ACFF;
+
+  /* Custom Colors */
+  --vkb-custom-color-01: #F3F7FC;
+  --vkb-custom-color-02: #E7EFFB;
+  --vkb-custom-color-03: #D7E5F8;
+  --vkb-custom-color-04: #B5C8DC;
+  --vkb-custom-color-05: #80A2C4;
+  --vkb-custom-color-06: #4E83B9;
+  --vkb-custom-color-07: #A1CFBF;
+  --vkb-custom-color-08: #861773;
+  --vkb-custom-color-09: #14885E;
+  --vkb-custom-color-10: #D1E3E5;
+  --vkb-custom-color-11: #8DB9BE;
+  --vkb-custom-color-12: #7EB6D2;
+
+  /* ---- Tailwind semantic tokens → VKB brand colors ---- */
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Base */
+  --background: var(--vkb-white);
+  --foreground: var(--vkb-body);
+
+  /* Primary (#397A94 petrol) */
+  --primary: var(--vkb-primary-01-default);
+  --primary-foreground: var(--vkb-body-inverted);
+
+  /* Secondary (#024589 dark blue) */
+  --secondary: var(--vkb-secondary-01-default);
+  --secondary-foreground: var(--vkb-body-inverted);
+
+  /* Card */
+  --card: var(--vkb-white);
+  --card-foreground: var(--vkb-body);
+
+  /* Popover */
+  --popover: var(--vkb-white);
+  --popover-foreground: var(--vkb-body);
+
+  /* Muted (light gray background) */
+  --muted: var(--vkb-hellgrau);
+  --muted-foreground: var(--vkb-text-placeholder);
+
+  /* Accent (light blue tint) */
+  --accent: var(--vkb-hellblau);
+  --accent-foreground: var(--vkb-secondary-01-default);
+
+  /* Destructive */
+  --destructive: var(--vkb-error);
+
+  /* Border / Input / Ring */
+  --border: var(--vkb-hellpetrol);
+  --input: var(--vkb-hellgrau);
+  --ring: var(--vkb-focus-light);
+
+  /* State colors */
+  --success: var(--vkb-success);
+  --warning: var(--vkb-warning);
+  --info: var(--vkb-info);
+  --error: var(--vkb-error);
+
+  /* Sidebar */
+  --sidebar: var(--vkb-hellgrau);
+  --sidebar-foreground: var(--vkb-body);
+  --sidebar-primary: var(--vkb-primary-01-default);
+  --sidebar-primary-foreground: var(--vkb-body-inverted);
+  --sidebar-accent: var(--vkb-primary-05-disabled);
+  --sidebar-accent-foreground: var(--vkb-secondary-01-default);
+  --sidebar-border: var(--vkb-hellpetrol);
+  --sidebar-ring: var(--vkb-focus-light);
+}

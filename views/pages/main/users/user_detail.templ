@@ -1,0 +1,199 @@
+package usersview
+
+import (
+	"app/api/router"
+	"app/auth"
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
+	"slices"
+	"strconv"
+	tuicard "github.com/templui/templui/components/card"
+)
+
+templ UserDetail(user *mq.UserProfile, lang string, targetUser *auth.UserProfile, userGroups []string, allGroups []string) {
+	@UserLayout(user, lang, Trl(ctx, L.Users.UserDetail)) {
+		@UserDetailPage(user, lang, targetUser, userGroups, allGroups)
+	}
+}
+
+templ UserDetailPage(user *mq.UserProfile, lang string, targetUser *auth.UserProfile, userGroups []string, allGroups []string) {
+	<div class="space-y-4">
+		<div class="flex items-center justify-between">
+			<h1 class="text-2xl font-semibold">{ targetUser.Forename } { targetUser.Lastname }</h1>
+			<a href={ templ.SafeURL(router.Reverse(router.Users.List)) } class="text-sm text-vkb-link hover:underline">{ Trl(ctx, L.Users.BackToUsers) }</a>
+		</div>
+		<div class="grid gap-4 md:grid-cols-2">
+			@UserDetailPersonalData(lang, targetUser)
+			@UserDetailGroups(lang, targetUser, userGroups, allGroups)
+		</div>
+		<div>
+			@UserDetailAccountSecurity(lang, targetUser, "", "")
+		</div>
+		<div>
+			@UserDetailDangerZone(lang, targetUser)
+		</div>
+	</div>
+}
+
+templ UserDetailPersonalData(lang string, targetUser *auth.UserProfile) {
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+				{ Trl(ctx, L.Users.PersonalData) }
+			}
+		}
+		@tuicard.Content() {
+			<div class="space-y-1 text-sm">
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Auth.FirstName) }:</span> { targetUser.Forename }</p>
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Auth.LastName) }:</span> { targetUser.Lastname }</p>
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Users.Salutation) }:</span> { targetUser.Salutation }</p>
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Auth.Email) }:</span> { targetUser.Email }</p>
+			</div>
+		}
+	}
+}
+
+templ UserDetailGroups(lang string, targetUser *auth.UserProfile, userGroups []string, allGroups []string) {
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+				{ Trl(ctx, L.Users.AssignRole) }
+			}
+		}
+		@tuicard.Content() {
+			{{ groupsAction := router.Reverse(router.Users.UpdateGroups, strconv.Itoa(int(targetUser.ID))) }}
+			@uiform.Form(uiform.FormProps{
+				Class:  "flex flex-col gap-3",
+				Action: groupsAction,
+				Method: "post",
+				Attributes: templ.Attributes{
+					"hx-post":   groupsAction,
+					"hx-swap":   "outerHTML",
+				},
+			}) {
+				<div class="grid grid-cols-2 gap-2">
+					for _, g := range allGroups {
+						<label class="flex items-center gap-2 text-sm">
+							<input
+								type="checkbox"
+								name="groups"
+								value={ g }
+								checked?={ slices.Contains(userGroups, g) }/>
+							<span>{ g }</span>
+						</label>
+					}
+				</div>
+				<div class="flex justify-end">
+					@uibutton.Button(uibutton.Props{
+						Type:  "submit",
+						Color: "primary",
+						Size:  "sm",
+						Label: Trl(ctx, L.Users.SaveChanges),
+					})
+				</div>
+			}
+		}
+	}
+}
+
+templ UserDetailAccountSecurity(lang string, targetUser *auth.UserProfile, errorMessage string, successMessage string) {
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+				{ Trl(ctx, L.Users.Account) }
+			}
+		}
+		@tuicard.Content() {
+			if errorMessage != "" {
+				@uiform.Notice(uiform.NoticeProps{
+					Variant: uiform.MessageVariantError,
+					Class:   "w-full mb-3",
+					Title:   "Error",
+				}) {
+					{ errorMessage }
+				}
+			}
+			if successMessage != "" {
+				@uiform.Notice(uiform.NoticeProps{
+					Variant: uiform.MessageVariantInfo,
+					Class:   "w-full mb-3",
+				}) {
+					{ successMessage }
+				}
+			}
+			{{ accountAction := router.Reverse(router.Users.UpdateAccount, strconv.Itoa(int(targetUser.ID))) }}
+			@uiform.Form(uiform.FormProps{
+				Class:  "flex flex-col gap-3 max-w-md",
+				Action: accountAction,
+				Method: "post",
+				Attributes: templ.Attributes{
+					"hx-post":   accountAction,
+					"hx-swap":   "outerHTML",
+				},
+			}) {
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" name="disabled" checked?={ targetUser.Disabled }/>
+					<span>{ Trl(ctx, L.Users.AccountDisabled) }</span>
+				</label>
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" name="must_reset_password" checked?={ targetUser.MustResetPassword }/>
+					<span>{ Trl(ctx, L.Users.MustResetPassword) }</span>
+				</label>
+				@uiform.Item(uiform.ItemProps{Class: "space-y-1.5"}) {
+					@uiform.Label(uiform.LabelProps{For: "new_password"}) {
+						{ Trl(ctx, L.Auth.NewPassword) }
+					}
+					@uiinput.Input(uiinput.Props{
+						ID:   "new_password",
+						Name: "new_password",
+						Type: "password",
+					})
+				}
+				@uiform.Item(uiform.ItemProps{Class: "space-y-1.5"}) {
+					@uiform.Label(uiform.LabelProps{For: "confirm_password"}) {
+						{ Trl(ctx, L.Auth.ConfirmPassword) }
+					}
+					@uiinput.Input(uiinput.Props{
+						ID:   "confirm_password",
+						Name: "confirm_password",
+						Type: "password",
+					})
+				}
+				<div class="flex justify-end">
+					@uibutton.Button(uibutton.Props{
+						Type:  "submit",
+						Color: "primary",
+						Size:  "sm",
+						Label: Trl(ctx, L.Users.SaveChanges),
+					})
+				</div>
+			}
+		}
+	}
+}
+
+templ UserDetailDangerZone(lang string, targetUser *auth.UserProfile) {
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base text-destructive"}) {
+				{ Trl(ctx, L.Users.DangerZone) }
+			}
+		}
+		@tuicard.Content() {
+			<p class="text-sm text-muted-foreground mb-3">{ Trl(ctx, L.Users.DeletingTheUserCannotBeUndone) }</p>
+			@uibutton.Button(uibutton.Props{
+				Color: "secondary",
+				Size:  "sm",
+				Label: Trl(ctx, L.Users.DeleteUser),
+				Attrs: templ.Attributes{
+					"hx-delete":  router.Reverse(router.Users.Delete, strconv.Itoa(int(targetUser.ID))),
+					"hx-confirm": Trl(ctx, L.Users.DeletingTheUserCannotBeUndone),
+				},
+			})
+		}
+	}
+}

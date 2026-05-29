@@ -1,0 +1,48 @@
+package usersview
+
+import (
+	"app/db"
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	breadcrumb "github.com/templui/templui/components/breadcrumb"
+)
+
+templ Users(user *mq.UserProfile, lang string, rows []db.UserProfileTableRow, request globaltable.Request, total int64, filters UsersFilterData) {
+	@UserLayout(user, lang, Trl(ctx, L.Users.AllUsers)) {
+		@UsersPage(lang, rows, request, total, filters)
+	}
+}
+
+templ UsersPage(lang string, rows []db.UserProfileTableRow, request globaltable.Request, total int64, filters UsersFilterData) {
+	<div class="space-y-4">
+		@UsersBreadcrumbs(lang)
+		@UsersFilterPanel(lang, filters)
+		<div>
+			@CurrentUsersTable(lang, rows, request, total)
+		</div>
+	</div>
+}
+
+templ UsersBreadcrumbs(lang string) {
+	@breadcrumb.Breadcrumb() {
+		@breadcrumb.List(breadcrumb.ListProps{Class: "text-xs"}) {
+			@breadcrumb.Item() {
+				@breadcrumb.Link(breadcrumb.LinkProps{Href: "/"}) {
+					{ Trl(ctx, L.Navigation.Home) }
+				}
+			}
+			@breadcrumb.Item() {
+				@breadcrumb.Separator()
+				{ Trl(ctx, L.Navigation.Administration) }
+			}
+			@breadcrumb.Item() {
+				@breadcrumb.Separator()
+				@breadcrumb.Page(breadcrumb.ItemProps{Class: "font-bold"}) {
+					{ Trl(ctx, L.Users.AllUsers) }
+				}
+			}
+		}
+	}
+}

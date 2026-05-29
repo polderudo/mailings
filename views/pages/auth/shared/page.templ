@@ -1,0 +1,104 @@
+package authshared
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	. "app/views/layout"
+	. "app/views/layout/components"
+	. "app/views/pages/auth/forgotpassword"
+	. "app/views/pages/auth/login"
+	. "app/views/pages/auth/passwordcreate"
+	"github.com/templui/templui/components/icon"
+)
+
+templ AuthShell(title string, subtitle string, footerText string, footerLinkText string, footerLinkHref string, lang string) {
+	@GuestLayout() {
+		<div class="flex min-h-svh w-full flex-col bg-background text-foreground">
+			<header class="flex items-center justify-between border-b bg-background px-6 py-4">
+				<h1 class="text-2xl font-semibold tracking-tight">
+					Mailings
+				</h1>
+				<div class="flex items-center gap-2">
+					@Lang(lang)
+					<button
+						aria-label={ Trl(ctx, L.Ui.ToggleTheme) }
+						title={ Trl(ctx, L.Ui.ToggleTheme) }
+						class="relative overflow-hidden size-8 inline-flex items-center justify-center rounded-full bg-transparent hover:bg-muted text-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+						data-theme-control="toggle">
+						@icon.Sun(icon.Props{Class: "absolute size-4.5 -translate-y-4 opacity-0 transition-all duration-300 group-data-[theme=light]/html:translate-y-0 group-data-[theme=light]/html:opacity-100"})
+						@icon.Moon(icon.Props{Class: "absolute size-4.5 translate-y-4 opacity-0 transition-all duration-300 group-data-[theme=dark]/html:translate-y-0 group-data-[theme=dark]/html:opacity-100"})
+						@icon.Palette(icon.Props{Class: "absolute size-4.5 opacity-100 group-data-[theme=dark]/html:opacity-0 group-data-[theme=light]/html:opacity-0"})
+					</button>
+				</div>
+			</header>
+
+			<main class="flex-1">
+				<div class="grid min-h-[calc(100svh-64px)] w-full overflow-hidden lg:grid-cols-2">
+					<div class="hidden lg:block">
+						<img
+							src="/static/img/placeholder.svg"
+							alt="Authentication"
+							class="h-full w-full object-cover"
+						/>
+					</div>
+					<div class="flex items-center justify-center p-8">
+						<div class="space-y-8 sm:w-[350px]">
+							<div class="space-y-2 text-center">
+								<h1 class="text-2xl font-semibold tracking-tight">{ title }</h1>
+								<p class="text-sm text-muted-foreground">{ subtitle }</p>
+							</div>
+							{ children... }
+							if footerText != "" {
+								<p class="text-center text-sm text-muted-foreground">
+									{ footerText }
+									<a href={ footerLinkHref } class="ml-1 font-medium text-vkb-link hover:underline hover:text-vkb-link-hover">
+										{ footerLinkText }
+									</a>
+								</p>
+							}
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+	}
+}
+
+templ Login(loginError string, lang string) {
+	@AuthShell(
+		Trl(ctx, L.Auth.Login),
+		Trl(ctx, L.Auth.SeamlessAccessSecureConnectionAndI2kg7kfd),
+		"",
+		"",
+		"",
+		lang,
+	) {
+		@LoginFormCard(loginError, lang)
+	}
+}
+
+templ ForgotPassword(forgotPasswordError string, forgotPasswordSuccess string, lang string) {
+	@AuthShell(
+		Trl(ctx, L.Auth.ResetPassword),
+		Trl(ctx, L.Auth.EnterYourEmailAddressAndWellSendLx7szxy3),
+		Trl(ctx, L.Auth.RememberedYourPassword),
+		Trl(ctx, L.Auth.SignIn),
+		router.Reverse(router.Anon.LoginPage),
+		lang,
+	) {
+		@ForgotPasswordFormCard(forgotPasswordError, forgotPasswordSuccess, lang)
+	}
+}
+
+templ PasswordCreate(token string, errorMessage string, lang string) {
+	@AuthShell(
+		Trl(ctx, L.Auth.CreateANewPassword),
+		Trl(ctx, L.Auth.ChooseANewPasswordMin8Characters),
+		Trl(ctx, L.Auth.BackToLogin),
+		Trl(ctx, L.Auth.SignIn),
+		router.Reverse(router.Anon.LoginPage),
+		lang,
+	) {
+		@PasswordCreateFormCard(token, errorMessage)
+	}
+}

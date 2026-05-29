@@ -1,0 +1,81 @@
+package layout
+import (
+	"app/api/router"
+	. "app/i18n"
+
+	"github.com/templui/templui/components/button"
+	"github.com/templui/templui/components/dropdown"
+	"github.com/templui/templui/components/icon"
+)
+
+func languageItemClass(currentLang string, optionLang string) string {
+	className := "flex w-full items-center gap-2 rounded-sm"
+	if NormalizeLang(currentLang) == NormalizeLang(optionLang) {
+		return className + " font-medium"
+	}
+
+	return className
+}
+func languageFlag(lang string) string {
+	if NormalizeLang(lang) == DE {
+		return "https://flagcdn.com/de.svg"
+	}
+
+	return "https://flagcdn.com/gb.svg"
+}
+
+templ Lang(lang string) {
+	@dropdown.Dropdown(dropdown.Props{ID: "language-switcher"}) {
+		@dropdown.Trigger() {
+			@button.Button(button.Props{
+				Variant: button.VariantOutline,
+				Size:    button.SizeIcon,
+				Class:   "rounded-xl bg-card/80 shadow-sm",
+				Attributes: templ.Attributes{
+					"aria-label": Trl(ctx, L.Ui.CurrentLanguage),
+					"title":      Trl(ctx, L.Ui.CurrentLanguage),
+				},
+			}) {
+				// @icon.Globe(icon.Props{Class: "size-4"})
+                <img
+                src={ languageFlag(lang) }
+                alt={ Trl(ctx, L.Ui.CurrentLanguage) }
+                class="rounded-box size-4.5 object-cover" />
+			}
+		}
+		@dropdown.Content(dropdown.ContentProps{Class: "mt-2 w-40"}) {
+			@dropdown.Item(dropdown.ItemProps{
+				Href:  router.Reverse(router.Anon.Language, EN),
+				Class: languageItemClass(lang, EN),
+				Attributes: templ.Attributes{
+					"hx-boost": "false",
+				},
+			}) {
+				// <span>{ Trl(ctx, L.Ui.English) }</span>
+                <img
+                    src={ languageFlag(EN) }
+                    alt={ Trl(ctx, L.Ui.English) }
+                    class="rounded-box size-4.5 cursor-pointer object-cover" />
+				if NormalizeLang(lang) == EN {
+					@icon.Check(icon.Props{Class: "size-4"})
+				}
+			}
+			@dropdown.Item(dropdown.ItemProps{
+				Href:  router.Reverse(router.Anon.Language, DE),
+				Class: languageItemClass(lang, DE),
+				Attributes: templ.Attributes{
+					"hx-boost": "false",
+				},
+			}) {
+				// <span>{ Trl(ctx, L.Ui.German) }</span>
+                <img
+                    src={ languageFlag(DE) }
+                    alt={ Trl(ctx, L.Ui.German) }
+                    class="rounded-box size-4.5 cursor-pointer object-cover" />
+				if NormalizeLang(lang) == DE {
+					@icon.Check(icon.Props{Class: "size-4"})
+				}
+			}
+		}
+	}
+}

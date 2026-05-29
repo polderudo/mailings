@@ -1,0 +1,209 @@
+- EN: Stock list
+  DE: Bestandsliste
+
+- EN: Material Definition export
+  DE: Materialdefinition export
+
+- EN: Filter criteria
+  DE: Filterkriterien
+
+- EN: Material Definition ID
+  DE: Materialdefinition ID
+
+- EN: Material Definition Name
+  DE: Materialdefinition Name
+
+- EN: Material Type
+  DE: Materialtyp
+
+- EN: Material Classes
+  DE: Materialklassen
+
+- EN: Material Class
+  DE: Materialklasse
+
+- EN: Description
+  DE: Beschreibung
+
+- EN: Default UOM
+  DE: Standard-Einheit
+
+- EN: Shelf Life QM Hours
+  DE: MHD QM Stunden
+
+- EN: Shelf Life Customer Hours
+  DE: MHD Kunde Stunden
+
+- EN: Package Default Weight
+  DE: Gebinde Standard Gewicht
+
+- EN: Package Default UOM
+  DE: Gebinde Standard Einheit
+
+- EN: Is Packed Default
+  DE: Ist standardmäßig Verpackt
+
+- EN: Mat Storage Type
+  DE: Materialspeicherart
+
+- EN: External Managed
+  DE: Extern verwaltet
+
+- EN: Storage Hut Type
+  DE: Behälterart
+
+- EN: Order Hut Type
+  DE: Bestell Behälterart
+
+- EN: External Storage Equipment ID
+  DE: Externes Speicher ID
+
+- EN: Erp Vendor ID
+  DE: Erp Lieferant ID
+
+- EN: Erp UOM ID
+  DE: Erp Einheit ID
+
+- EN: Checkout Details
+  DE: Details Auslagerung
+
+- EN: Checkout list
+  DE: Liste Auslagerung
+
+- EN: Checkout list export
+  DE: Export Liste Auslagerung
+
+- EN: Checkout Export
+  DE: Auslagerung Export
+
+- EN: Destination Equipment ID
+  DE: Ziel Equipment
+
+- EN: Status
+  DE: Status
+
+- EN: Batch ID
+  DE: Batch ID
+
+- EN: Create At
+  DE: Erstellt am
+
+- EN: Create From
+  DE: Erstellt von
+
+- EN: Quantity
+  DE: Menge
+
+- EN: Reserved Nr HUTs
+  DE: Res. Anz. Behälter
+
+- EN: Reserved Quantity
+  DE: Res. Menge
+
+- EN: Finished Nr HUTs
+  DE: Abgeschl. Anz. Behälter
+
+- EN: Finished Quantity
+  DE: Abgeschl. Menge
+
+- EN: Checkout HUTs
+  DE: Auslagerung Behälter
+
+- EN: Hut ID
+  DE: Behälter ID
+
+- EN: Lot ID
+  DE: Los ID
+
+- EN: Sublot ID
+  DE: Sublos ID
+
+- EN: Best before date (QM)
+  DE: Haltbar bis (QM)
+
+- EN: Best before date (Customer)
+  DE: Haltbar bis (Kunde)
+
+- EN: Uom
+  DE: Einheit
+
+- EN: Vendor ID
+  DE: Verkäufer ID
+
+- EN: Vendor Name
+  DE: Verkäufer Name
+
+- EN: Vendor MatID
+  DE: Verkäufer MatID
+
+- EN: Checkin list
+  DE: Checkin Liste
+
+- EN: Checkin list export
+  DE: Checkin Liste Export
+
+- EN: Checkin Details
+  DE: CheckinDetails
+
+- EN: Checkin Export
+  DE: Checkin export
+
+- EN: Production Date
+  DE: Produktionsdatum
+
+- EN: BestBefore Date
+  DE: Haltbarkeitsdatum
+
+- EN: BB-Calc
+  DE: Hbk Berechnet
+
+- EN: Target Weighing
+  DE: Zielgewichtung
+
+- EN: Target Weighing Value
+  DE: Zielgewicht Wert
+
+- EN: TW UoM
+  DE: TW UoM
+
+- EN: Nr Huts Checked in
+  DE: Anzahl Huts Checkin
+
+- EN: Qty Checked in
+  DE: Menge Checkin
+
+- EN: Qty(scale) Checked in
+  DE: Menge(Waage) Checkin
+
+- EN: External Data
+  DE: Externe Daten
+
+- EN: UoM_1
+  DE: Einheit_1
+
+- EN: Qty UoM_1
+  DE: Menge Einheit_1
+
+- EN: UoM_2
+  DE: Einheit_2
+
+- EN: Qty UoM_2
+  DE: Menge Einheit_2
+
+- EN: UoM_3
+  DE: Einheit_3
+
+- EN: Qty UoM_3
+  DE: Menge Einheit_3
+
+- EN: UoM_4
+  DE: Einheit_4
+
+- EN: Qty UoM_4
+  DE: Menge Einheit_4
+
+- EN: Life_1
+  DE: MHD:1
+
+- EN: Life_2
+  DE: MHD:2

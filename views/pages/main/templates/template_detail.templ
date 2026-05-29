@@ -1,0 +1,214 @@
+package templatesview
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	"strconv"
+	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
+	tuicard "github.com/templui/templui/components/card"
+	breadcrumb "github.com/templui/templui/components/breadcrumb"
+)
+
+type TemplateFormData struct {
+	ID        int32
+	Name      string
+	Subject   string
+	BodyHTML  string
+	BodyDelta string
+	IsNew     bool
+}
+
+templ TemplateDetail(user *mq.UserProfile, lang string, data TemplateFormData) {
+	@UserLayout(user, lang, Trl(ctx, L.Templates.TemplateDetail)) {
+		@TemplateDetailPage(lang, data)
+	}
+}
+
+templ TemplateDetailPage(lang string, data TemplateFormData) {
+	<div class="space-y-4">
+		@TemplateDetailBreadcrumbs(lang, data)
+		@TemplateForm(lang, data)
+	</div>
+}
+
+templ TemplateDetailBreadcrumbs(lang string, data TemplateFormData) {
+	@breadcrumb.Breadcrumb() {
+		@breadcrumb.List(breadcrumb.ListProps{Class: "text-xs"}) {
+			@breadcrumb.Item() {
+				@breadcrumb.Link(breadcrumb.LinkProps{Href: "/"}) {
+					{ Trl(ctx, L.Navigation.Home) }
+				}
+			}
+			@breadcrumb.Item() {
+				@breadcrumb.Separator()
+				@breadcrumb.Link(breadcrumb.LinkProps{Href: router.Reverse(router.Templates.List)}) {
+					{ Trl(ctx, L.Templates.AllTemplates) }
+				}
+			}
+			@breadcrumb.Item() {
+				@breadcrumb.Separator()
+				@breadcrumb.Page(breadcrumb.ItemProps{Class: "font-bold"}) {
+					if data.IsNew {
+						{ Trl(ctx, L.Templates.NewTemplate) }
+					} else {
+						{ data.Name }
+					}
+				}
+			}
+		}
+	}
+}
+
+templ TemplateForm(lang string, data TemplateFormData) {
+	@quillAssets()
+	{{
+		formAction := router.Reverse(router.Templates.Create)
+		if !data.IsNew {
+			formAction = router.Reverse(router.Templates.Update, strconv.Itoa(int(data.ID)))
+		}
+	}}
+	@tuicard.Card() {
+		@tuicard.Content() {
+			@uiform.Form(uiform.FormProps{
+				Class:  "flex flex-col gap-4",
+				Action: formAction,
+				Method: "post",
+				Attributes: templ.Attributes{
+					"hx-post":   formAction,
+					"hx-swap":   "outerHTML",
+					"hx-target": "this",
+					"x-data":    quillAlpineData(data.BodyDelta, data.BodyHTML),
+				},
+			}) {
+				@uiform.Item() {
+					@uiform.Label(uiform.LabelProps{For: "name"}) {
+						{ Trl(ctx, L.Templates.TemplateName) }
+					}
+					@uiinput.Input(uiinput.Props{
+						ID:       "name",
+						Name:     "name",
+						Value:    data.Name,
+						Required: true,
+					})
+				}
+				@uiform.Item() {
+					@uiform.Label(uiform.LabelProps{For: "subject"}) {
+						{ Trl(ctx, L.Templates.Subject) }
+					}
+					@uiinput.Input(uiinput.Props{
+						ID:    "subject",
+						Name:  "subject",
+						Value: data.Subject,
+					})
+				}
+				@uiform.Item() {
+					@uiform.Label() {
+						{ Trl(ctx, L.Templates.Body) }
+					}
+					<div id="template-editor" class="bg-base-100 min-h-[400px]"></div>
+					<input type="hidden" name="body_html" x-ref="bodyHtml" x-model="bodyHtml"/>
+					<input type="hidden" name="body_delta" x-ref="bodyDelta" x-model="bodyDelta"/>
+				}
+				<div class="flex justify-between items-center pt-2">
+					if !data.IsNew {
+						@uibutton.Button(uibutton.Props{
+							Color: "secondary",
+							Size:  "sm",
+							Label: Trl(ctx, L.Templates.DeleteTemplate),
+							Attrs: templ.Attributes{
+								"hx-delete":  router.Reverse(router.Templates.Delete, strconv.Itoa(int(data.ID))),
+								"hx-confirm": Trl(ctx, L.Templates.DeleteTemplate) + "?",
+							},
+						})
+					} else {
+						<span></span>
+					}
+					@uibutton.Button(uibutton.Props{
+						Type:  "submit",
+						Color: "primary",
+						Size:  "sm",
+						Label: Trl(ctx, L.Templates.SaveTemplate),
+						Attrs: templ.Attributes{
+							"@click": "syncQuill()",
+						},
+					})
+				</div>
+			}
+		}
+	}
+}
+
+func quillAlpineData(delta, html string) string {
+	d := delta
+	if d == "" {
+		d = "{}"
+	}
+	return `{
+		bodyHtml: ` + jsString(html) + `,
+		bodyDelta: ` + jsString(d) + `,
+		quill: null,
+		init() {
+			const self = this;
+			const el = document.getElementById('template-editor');
+			if (!el || typeof Quill === 'undefined') {
+				return;
+			}
+			self.quill = new Quill(el, {
+				theme: 'snow',
+				modules: {
+					toolbar: [
+						[{ header: [1, 2, 3, false] }],
+						['bold', 'italic', 'underline'],
+						[{ list: 'ordered' }, { list: 'bullet' }],
+						[{ align: [] }],
+						['link', 'image'],
+						['clean'],
+					],
+				},
+			});
+			if (self.bodyDelta && self.bodyDelta !== '{}') {
+				try { self.quill.setContents(JSON.parse(self.bodyDelta)); }
+				catch (e) { self.quill.root.innerHTML = self.bodyHtml; }
+			} else if (self.bodyHtml) {
+				self.quill.root.innerHTML = self.bodyHtml;
+			}
+		},
+		syncQuill() {
+			if (!this.quill) return;
+			this.bodyHtml = this.quill.root.innerHTML;
+			this.bodyDelta = JSON.stringify(this.quill.getContents());
+		}
+	}`
+}
+
+func jsString(s string) string {
+	// Minimal escape for embedding into a JS string literal inside x-data.
+	b := make([]byte, 0, len(s)+2)
+	b = append(b, '"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '"', '\\':
+			b = append(b, '\\', c)
+		case '\n':
+			b = append(b, '\\', 'n')
+		case '\r':
+			b = append(b, '\\', 'r')
+		case '\t':
+			b = append(b, '\\', 't')
+		default:
+			b = append(b, c)
+		}
+	}
+	b = append(b, '"')
+	return string(b)
+}
+
+templ quillAssets() {
+	<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"/>
+	<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+}

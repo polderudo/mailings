@@ -1,0 +1,148 @@
+- EN: TestEntry
+
+- EN: TestEntry2
+  DE: v2
+
+- EN: Complete Qty.
+  DE: Gesamtmenge
+
+- EN: All
+  DE: Alle
+
+- EN: Yes
+  DE: Ja
+
+- EN: No
+  DE: Nein
+
+- EN: Weight of hut %s (%d gram) exceeds the maximum allowed weight of the rack-feeder (%d gram)
+  DE: Gewicht des Behälters %s (%d Gramm) übersteigt das Maximalgewicht des RBGs (%d Gramm)
+
+- EN: Given HUT %s is unknown/NoRead and can not be checked in
+  DE: Der Behälter %s ist unbekannt/NoRead. Einlagerung nicht möglich
+
+- EN: No HUT found for the required material
+  DE: Kein Behälter für gefordertes Material gefunden
+
+- EN: Need either cost center or process order
+  DE: Prozess-Auftrag oder Kostenstelle benötigt
+
+- EN: Current station is not an iPoint
+  DE: Aktuelle Station ist kein iPunkt
+
+- EN: Current station is not an ePoint
+  DE: Aktuelle Station ist kein ePunkt
+
+- EN: Batch-Processing is started already. No more changes possible
+  DE: Der Batch wurde bereits gestartet. Keine Änderung mehr möglich
+
+- EN: Given Hut is not the expected one
+  DE: Aktueller Behälter entspricht nicht dem geforderten Behälter
+
+- EN: No actual HUT found
+  DE: Kein Behälter gefunden
+
+- EN: HUT is NoRead. No Checkin possible
+  DE: Der NoRead-Behälter kann nicht eingelagert werden
+
+- EN: Metal was detected. No checkin possible
+  DE: Es wurde Metall im Behälter gefunden. Einlagerung nicht möglich
+
+- EN: "The given HUT %s is already known and has content. Checkin not possible"
+  DE: "Der aktuelle Behälter %s existiert bereits und hat Inhalt. Einlagerung nicht möglich"
+
+- EN: No value received from scale
+  DE: Keine Werte von der Skala empfangen
+
+- EN: No scale configured for current equipment
+  DE: Keine Waage für das aktuelles Equipment konfiguriert
+
+- EN: Error doing checkin
+  DE: Fehler beim Einlagern
+
+- EN: Checkout already started
+  DE: Auslagerung bereits gestartet
+
+- EN: Error finishing Checkout
+  DE: Fehler beim Beenden der Auslagerung
+
+- EN: Password reset for %s
+  DE: Passwort zurückgesetzt für %s
+
+- EN: Password change for %s
+  DE: Passwort-Änderung für %s
+
+- EN: Email already exists
+  DE: Email existiert bereits
+
+- EN: Hut %s already exists
+  DE: Behälter %s existiert bereits
+
+- EN: Material %s already exists
+  DE: Material %s existiert bereits
+
+- EN: Equipment %s already exists
+  DE: Equipment %s existiert bereits
+
+- EN: Material-Type %s already exists
+  DE: Material-Typ %s existiert bereits
+
+- EN: UoM %s already exists
+  DE: Einheit %s existiert bereits
+
+- EN: Material-Class %s already exists
+  DE: Material-Klasse %s existiert bereits
+
+- EN: HUT-ID %s already exists
+  DE: HUT-Id %s existiert bereits
+
+- EN: Conversion deleted successfully
+  DE: Umrechnung gelöscht
+
+- EN: Conversion created/updated successfully
+  DE: Umrechnung angelegt/aktualisiert
+
+- EN: You can not add yourself to a group!
+  DE: Sie können sich nicht selbst einer Gruppe zuweisen!
+
+- EN: Super-admin can not be added!
+  DE: Super-admin kann nicht zugewiesen werden!
+
+- EN: User is deactivated
+  DE: Benutzer ist deaktiviert
+
+- EN: User must change/set password
+  DE: Benutzer muss das Passwort ändern/setzen
+
+- EN: Email not found
+  DE: Email nicht gefunden
+
+- EN: Wrong password
+  DE: Falsches Passwort
+
+- EN: No scale value present and no value given
+  DE: Keinen Waagenwert erhalten und kein Vorgabewert gegeben
+
+- EN: Container-Type and Container-Count required
+  DE: Container-Typ und Container-Anzahl erforderlich
+
+- EN: No quantity for Sublot present
+  DE: Keine Menge für Sublot vorhanden
+
+- EN: For the given UoM %s, a quantity is required
+  DE: Für die gegebene Einheit %s ist eine Menge erforderlich
+
+- EN: Quantity will be calculated from scale value
+  DE: Menge wird aus Waagenwert berechnet
+
+- EN: Unknown HUT %s
+  DE: Unbekannter HUT %s
+
+- EN: Weight of HUT %s exceeds the maximum allowed weight of the HUT-Type (%d gram)
+  DE: Das Gewicht des HUT %s überschreitet das Maximalgewicht des HUT-Typs (%d gram)
+
+- EN: '%s and %s needed'
+  DE: '%s und %s benötigt'
+
+- EN: Hut is located in the HBW and can not be used
+  DE: Hut befindet sich im HBW und kann nicht verwendet werden

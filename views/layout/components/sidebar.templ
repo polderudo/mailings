@@ -1,0 +1,75 @@
+package layout
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	tuicollapsible "github.com/templui/templui/components/collapsible"
+	tuiicon "github.com/templui/templui/components/icon"
+	tuisidebar "github.com/templui/templui/components/sidebar"
+)
+
+templ MailingsSidebar() {
+	@tuisidebar.Sidebar(tuisidebar.Props{
+		Collapsible: tuisidebar.CollapsibleOffcanvas,
+		Collapsed:   true,
+	}) {
+		@tuisidebar.Header() {
+			<a href="/" class="flex flex-col items-center gap-2 px-2 py-1">
+				<span class="text-xl font-bold">Mailings</span>
+			</a>
+		}
+		@tuisidebar.Content() {
+			@tuisidebar.Menu() {
+				@tuisidebar.Group() {
+					@tuisidebar.GroupLabel() { { Trl(ctx, L.Mailings.Mailings) } }
+					@tuisidebar.MenuItem() {
+						@tuisidebar.MenuButton(tuisidebar.MenuButtonProps{Href: router.Reverse(router.Mailings.List), Attributes: templ.Attributes{"data-page-title": Trl(ctx, L.Mailings.AllMailings)}}) {
+							@tuiicon.Send(tuiicon.Props{Class: "size-4"})
+							<span>{ Trl(ctx, L.Mailings.AllMailings) }</span>
+						}
+					}
+					@tuisidebar.MenuItem() {
+						@tuisidebar.MenuButton(tuisidebar.MenuButtonProps{Href: router.Reverse(router.Templates.List), Attributes: templ.Attributes{"data-page-title": Trl(ctx, L.Templates.AllTemplates)}}) {
+							@tuiicon.FileText(tuiicon.Props{Class: "size-4"})
+							<span>{ Trl(ctx, L.Templates.AllTemplates) }</span>
+						}
+					}
+					@tuisidebar.MenuItem() {
+						@tuisidebar.MenuButton(tuisidebar.MenuButtonProps{Href: router.Reverse(router.Lists.List), Attributes: templ.Attributes{"data-page-title": Trl(ctx, L.Lists.AllEmailLists)}}) {
+							@tuiicon.Users(tuiicon.Props{Class: "size-4"})
+							<span>{ Trl(ctx, L.Lists.AllEmailLists) }</span>
+						}
+					}
+				}
+				@tuisidebar.Group() {
+					@tuisidebar.GroupLabel() { { Trl(ctx, L.Users.Settings) } }
+					@tuisidebar.MenuItem() {
+						@tuicollapsible.Collapsible() {
+							@tuicollapsible.Trigger() {
+								@tuisidebar.MenuButton() {
+									@tuiicon.ShieldCheck(tuiicon.Props{Class: "size-4"})
+									<span>{ Trl(ctx, L.Navigation.Administration) }</span>
+									@tuiicon.ChevronDown(tuiicon.Props{Class: "ml-auto size-4 transition-transform duration-200 group-data-[tui-collapsible-state=open]:rotate-180"})
+								}
+							}
+							@tuicollapsible.Content() {
+								@tuisidebar.MenuSub() {
+									@tuisidebar.MenuSubItem() {
+										@tuisidebar.MenuSubButton(tuisidebar.MenuSubButtonProps{Href: router.Reverse(router.Settings.Page), Attributes: templ.Attributes{"data-page-title": Trl(ctx, L.Users.Account)}}) {
+											{ Trl(ctx, L.Users.Account) }
+										}
+									}
+									@tuisidebar.MenuSubItem() {
+										@tuisidebar.MenuSubButton(tuisidebar.MenuSubButtonProps{Href: router.Reverse(router.Users.List), Attributes: templ.Attributes{"data-page-title": Trl(ctx, L.Users.AllUsers)}}) {
+											{ Trl(ctx, L.Users.AllUsers) }
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

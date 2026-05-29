@@ -1,0 +1,35 @@
+package homeview
+
+import (
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	tuicard "github.com/templui/templui/components/card"
+)
+
+templ Index(user *mq.UserProfile, lang string, viaLoginPage bool, isAdmin bool) {
+	@UserLayout(user, lang, Trl(ctx, L.Navigation.Home)) {
+		@IndexContent(user, viaLoginPage, isAdmin)
+	}
+}
+
+templ IndexContent(user *mq.UserProfile, viaLoginPage bool, isAdmin bool) {
+	<div class="space-y-6">
+		@tuicard.Card() {
+			@tuicard.Header() {
+				@tuicard.Title() {
+					if user != nil {
+						<span>Hallo { user.Forename } { user.Lastname }</span>
+					} else {
+						<span>Willkommen</span>
+					}
+				}
+			}
+			@tuicard.Content() {
+				<p class="text-muted-foreground">
+					Willkommen bei Mailings — der Newsletter- und Mailing-Anwendung.
+				</p>
+			}
+		}
+	</div>
+}

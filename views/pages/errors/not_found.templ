@@ -1,0 +1,42 @@
+package errorsview
+
+import (
+	"app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	tuibutton "github.com/templui/templui/components/button"
+)
+
+templ NotFoundPage(user *mq.UserProfile, lang string) {
+	@UserLayout(user, lang, i18n.Trl(ctx, i18n.L.Ui.PageNotFound)) {
+		@notFoundContent()
+	}
+}
+
+templ NotFoundGuestPage() {
+	@GuestLayout() {
+		@notFoundContent()
+	}
+}
+
+templ notFoundContent() {
+	<div class="flex min-h-[60vh] flex-col items-center justify-center gap-8 py-20 text-center">
+		<p class="select-none text-[8rem] font-bold leading-none text-muted-foreground/15 md:text-[12rem]">
+			404
+		</p>
+		<div class="space-y-2">
+			<h1 class="text-2xl font-semibold tracking-tight">
+				{ i18n.Trl(ctx, i18n.L.Ui.PageNotFound) }
+			</h1>
+			<p class="mx-auto max-w-xs text-sm text-muted-foreground">
+				{ i18n.Trl(ctx, i18n.L.Ui.ThePageYouAreLookingForDoesNotExist) }
+			</p>
+		</div>
+		@tuibutton.Button(tuibutton.Props{
+			Href:    "/",
+			Variant: tuibutton.VariantOutline,
+		}) {
+			{ i18n.Trl(ctx, i18n.L.Ui.GoToHome) }
+		}
+	</div>
+}

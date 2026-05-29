@@ -1,0 +1,56 @@
+package mailingsview
+
+import (
+	"app/api/router"
+	appdb "app/db"
+	. "app/i18n"
+	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+)
+
+const CurrentMailingsTableID = "mailings-table"
+
+func normalizeMailingsTableRequest(request globaltable.Request) globaltable.Request {
+	if request.FilterCriteria == nil {
+		request.FilterCriteria = map[string]string{}
+	}
+	if request.Pagination.Page < 1 {
+		request.Pagination.Page = 1
+	}
+	if request.Pagination.Count <= 0 {
+		request.Pagination.Count = 50
+	}
+	if len(request.Pagination.Sorts) == 0 {
+		request.Pagination.Sorts = []globaltable.SortParam{{Field: "createdAt", IsDesc: true}}
+	}
+	return request
+}
+
+func CurrentMailingsTableProps(lang string, rows []appdb.MailingTableRow, request globaltable.Request, total int64) globaltable.TableProps {
+	return globaltable.TableProps{
+		Lang:                NormalizeLang(lang),
+		ID:                  CurrentMailingsTableID,
+		Class:               "mt-6",
+		Endpoint:            router.Reverse(router.Mailings.List),
+		Request:             normalizeMailingsTableRequest(request),
+		Total:               total,
+		Title:               TrLang(lang, L.Mailings.AllMailings),
+		RowClickAccessorKey: "id",
+		RowClickURLPattern:  router.Reverse(router.Mailings.Detail, "{value}"),
+		PageSizes:           []int{10, 25, 50, 100},
+		Columns: []globaltable.Column{
+			{AccessorKey: "id", Header: TrLang(lang, L.Users.Id), Kind: "id", Width: "5rem", MinWidth: "5rem", Sortable: true},
+			{AccessorKey: "name", Header: TrLang(lang, L.Mailings.MailingName), MinWidth: "14rem", Sortable: true},
+			{AccessorKey: "templateName", Header: TrLang(lang, L.Mailings.Template), MinWidth: "12rem"},
+			{AccessorKey: "listName", Header: TrLang(lang, L.Mailings.EmailList), MinWidth: "12rem"},
+			{AccessorKey: "domain", Header: TrLang(lang, L.Mailings.Domain), MinWidth: "10rem"},
+			{AccessorKey: "status", Header: TrLang(lang, L.Mailings.MailingStatus), Width: "8rem", MinWidth: "8rem", Sortable: true},
+			{AccessorKey: "sentCount", Header: TrLang(lang, L.Mailings.SentCount), Width: "6rem", MinWidth: "6rem"},
+		},
+		Data:         rows,
+		EmptyMessage: TrLang(lang, L.Mailings.NoMailingsYet),
+	}
+}
+
+templ CurrentMailingsTable(lang string, rows []appdb.MailingTableRow, request globaltable.Request, total int64) {
+	@globaltable.Table(CurrentMailingsTableProps(lang, rows, request, total))
+}

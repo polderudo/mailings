@@ -1,0 +1,32 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <title>Application Error</title>
+  <meta name="description" content="Application Error">
+</head>
+
+<body>
+  Code: {{.Code}}
+  <br/> Error: {{.Err}}
+  <br/> Context: {{.C}}
+  <br/> Path: {{.C.Request.RequestURI}}
+  <br/> Method: {{.C.Request.Method}}
+  <br/> Hostname: {{.Hostname}}
+  <br/> ClientIP: {{.ClientAdress}}
+  <br/> User: {{.User}}
+  <br/> Request-ID: {{.RequestID}}
+  <br/> Headers:
+  {{ range $key, $value := .Headers }}
+    <br/>&nbsp;<strong>{{ $key }}</strong>: {{ $value }}
+  {{ end }}
+
+  <br/>
+  <br/>
+  <br/> Stack: {{.Stack}}
+</body>
+
+</html>

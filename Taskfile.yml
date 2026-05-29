@@ -1,0 +1,90 @@
+version: "3"
+
+tasks:
+  free-dev-port:
+    desc: Stop stale go run process on port 3000
+    cmds:
+      - |
+        pid="$(lsof -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true)" && \
+        if [ -z "$pid" ]; then \
+          exit 0; \
+        fi && \
+        args="$(ps -p "$pid" -o args= 2>/dev/null || true)" && \
+        case "$args" in \
+          /tmp/go-build*/exe/app*) \
+            echo "Stopping stale dev process on :3000 (pid $pid)" && \
+            kill "$pid" \
+            ;; \
+          *) \
+            echo "Port 3000 is already in use by: $args" >&2 && \
+            exit 1 \
+            ;; \
+        esac
+
+  templ-views:
+    desc: Watch templ files in views (no backend)
+    cmds:
+      - go tool templ generate --watch --path ./views
+
+  templ-ui:
+    desc: Watch templ files in ui-components submodule
+    cmds:
+      - go tool templ generate --watch --path ./ui-components
+
+  templ-run:
+    desc: Run templ with integrated server and hot reload
+    cmds:
+      - task: free-dev-port
+      - go tool templ generate --watch --proxy="http://localhost:3000" --proxyport=8081 --cmd="go run ." --open-browser=false
+
+  tailwind:
+    desc: Watch Tailwind CSS changes
+    cmds:
+      - |
+        export TEMPLUI_PATH="$(go list -m -f {{`'{{.Dir}}'`}} github.com/templui/templui)" && \
+        printf '%s\n' \
+          "@source \"$TEMPLUI_PATH/components/**/*.templ\";" \
+          "@source \"$TEMPLUI_PATH/components/**/*.js\";" \
+          > ./assets/css/sources.generated.css && \
+        tailwindcss -i ./input.css -o ./assets/css/output.css --watch
+
+  dev:
+    desc: Start development server with hot reload
+    cmds:
+      - task --parallel tailwind templ-run templ-ui
+
+  backend:
+    desc: Start CSS and templ watch without backend (start backend via debugger)
+    cmds:
+      - task --parallel tailwind templ-views templ-ui
+
+  build-css:
+    desc: Build Tailwind CSS for production (minified)
+    cmds:
+      - |
+        export TEMPLUI_PATH="$(go list -m -f {{`'{{.Dir}}'`}} github.com/templui/templui)" && \
+        printf '%s\n' \
+          "@source \"$TEMPLUI_PATH/components/**/*.templ\";" \
+          "@source \"$TEMPLUI_PATH/components/**/*.js\";" \
+          > ./assets/css/sources.generated.css && \
+        tailwindcss -i ./input.css -o ./assets/css/output.css --minify
+
+  build-templ:
+    desc: Generate templ files once (no watch)
+    cmds:
+      - go tool templ generate --path ./views
+      - go tool templ generate --path ./ui-components
+
+  build-linux:
+    desc: Full production build for Linux amd64 (CSS + templ + Go binary)
+    vars:
+      BIN_NAME: '{{.BIN_NAME | default "app"}}'
+    cmds:
+      - task: build-css
+      - task: build-templ
+      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o {{.BIN_NAME}}
+
+  go-generate:
+    desc: Run go generate
+    cmds:
+      - go generate ./...

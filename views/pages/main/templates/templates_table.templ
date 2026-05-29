@@ -1,0 +1,53 @@
+package templatesview
+
+import (
+	"app/api/router"
+	appdb "app/db"
+	. "app/i18n"
+	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+)
+
+const CurrentTemplatesTableID = "templates-table"
+
+func normalizeTemplatesTableRequest(request globaltable.Request) globaltable.Request {
+	if request.FilterCriteria == nil {
+		request.FilterCriteria = map[string]string{}
+	}
+	if request.Pagination.Page < 1 {
+		request.Pagination.Page = 1
+	}
+	if request.Pagination.Count <= 0 {
+		request.Pagination.Count = 50
+	}
+	if len(request.Pagination.Sorts) == 0 {
+		request.Pagination.Sorts = []globaltable.SortParam{{Field: "name", IsDesc: false}}
+	}
+	return request
+}
+
+func CurrentTemplatesTableProps(lang string, rows []appdb.MailTemplateTableRow, request globaltable.Request, total int64) globaltable.TableProps {
+	return globaltable.TableProps{
+		Lang:                NormalizeLang(lang),
+		ID:                  CurrentTemplatesTableID,
+		Class:               "mt-6",
+		Endpoint:            router.Reverse(router.Templates.List),
+		Request:             normalizeTemplatesTableRequest(request),
+		Total:               total,
+		Title:               TrLang(lang, L.Templates.AllTemplates),
+		RowClickAccessorKey: "id",
+		RowClickURLPattern:  router.Reverse(router.Templates.Detail, "{value}"),
+		PageSizes:           []int{10, 25, 50, 100},
+		Columns: []globaltable.Column{
+			{AccessorKey: "id", Header: TrLang(lang, L.Users.Id), Kind: "id", Width: "5rem", MinWidth: "5rem", Sortable: true},
+			{AccessorKey: "name", Header: TrLang(lang, L.Templates.TemplateName), MinWidth: "16rem", Sortable: true},
+			{AccessorKey: "subject", Header: TrLang(lang, L.Templates.Subject), MinWidth: "16rem", Sortable: true},
+			{AccessorKey: "updatedAt", Header: TrLang(lang, L.Users.CreatedAt), Width: "12rem", MinWidth: "12rem", Sortable: true},
+		},
+		Data:         rows,
+		EmptyMessage: TrLang(lang, L.Templates.NoTemplatesYet),
+	}
+}
+
+templ CurrentTemplatesTable(lang string, rows []appdb.MailTemplateTableRow, request globaltable.Request, total int64) {
+	@globaltable.Table(CurrentTemplatesTableProps(lang, rows, request, total))
+}

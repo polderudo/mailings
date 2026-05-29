@@ -1,0 +1,171 @@
+package settingsview
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
+	tuicard "github.com/templui/templui/components/card"
+)
+
+templ Settings(user *mq.UserProfile, lang string, userGroups []string) {
+	@UserLayout(user, lang, Trl(ctx, L.Users.Account)) {
+		@SettingsPageState(user, lang, userGroups, SettingsProfileFormDataFromUser(user), "", "")
+	}
+}
+
+templ SettingsPage(user *mq.UserProfile, lang string, userGroups []string) {
+	@SettingsPageState(user, lang, userGroups, SettingsProfileFormDataFromUser(user), "", "")
+}
+
+templ SettingsState(user *mq.UserProfile, lang string, userGroups []string, formData SettingsProfileFormData, errorMessage string, successMessage string) {
+	@UserLayout(user, lang, Trl(ctx, L.Users.Account)) {
+		@SettingsPageState(user, lang, userGroups, formData, errorMessage, successMessage)
+	}
+}
+
+templ SettingsPageState(user *mq.UserProfile, lang string, userGroups []string, formData SettingsProfileFormData, errorMessage string, successMessage string) {
+	<div id="settings-page-state">
+		@SettingsContent(user, userGroups, lang)
+		@SettingsChange(user, lang, formData, errorMessage, successMessage, userGroups)
+	</div>
+}
+
+templ SettingsContent(user *mq.UserProfile, userGroups []string, lang string) {
+	<div class="space-y-4">
+		<div>
+			<h1 class="text-2xl font-semibold">{ Trl(ctx, L.Users.Settings) }</h1>
+			<p class="text-muted-foreground">{ Trl(ctx, L.Users.YourAccountInformation) }</p>
+		</div>
+		<div class="grid gap-4 md:grid-cols-2">
+			@UserInfo(user, userGroups, lang)
+		</div>
+	</div>
+}
+
+templ UserInfoSection(user *mq.UserProfile, lang string, userGroups []string, formData SettingsProfileFormData, errorMessage string, successMessage string) {
+	<div id="settings-user-info" class="contents">
+		@UserInfo(user, userGroups, lang)
+	</div>
+}
+
+templ UserInfoUpdateState(user *mq.UserProfile, lang string, userGroups []string, formData SettingsProfileFormData, errorMessage string, successMessage string) {
+	@UserInfoSection(user, lang, userGroups, formData, errorMessage, successMessage)
+}
+
+templ UserInfo(user *mq.UserProfile, userGroups []string, lang string) {
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+				{ Trl(ctx, L.Users.Profile) }
+			}
+		}
+		@tuicard.Content() {
+			<div class="space-y-1 text-sm">
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Auth.FirstName) }:</span> <span>{ user.Forename }</span></p>
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Auth.LastName) }:</span> <span>{ user.Lastname }</span></p>
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Users.Salutation) }:</span> <span>{ user.Salutation }</span></p>
+			</div>
+		}
+	}
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+				{ Trl(ctx, L.Users.Account) }
+			}
+		}
+		@tuicard.Content() {
+			<div class="space-y-1 text-sm">
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Auth.Email) }:</span> <span>{ user.Email }</span></p>
+				<p><span class="text-muted-foreground">{ Trl(ctx, L.Users.Group) }:</span> { settingsUserGroupsLabel(userGroups) }</p>
+				<p>
+					<span class="text-muted-foreground">{ Trl(ctx, L.Labels.Status) }:</span>
+					if user.Disabled {
+						<span class="text-destructive">{ Trl(ctx, L.Users.Disabled) }</span>
+					} else {
+						<span class="text-green-600">{ Trl(ctx, L.Users.Active) }</span>
+					}
+				</p>
+			</div>
+		}
+	}
+}
+
+templ SettingsChange(user *mq.UserProfile, lang string, formData SettingsProfileFormData, errorMessage string, successMessage string, userGroups []string) {
+	<div class="mt-6">
+		@ChangePasswordState(user, errorMessage, successMessage, lang)
+	</div>
+}
+
+templ ChangePasswordState(user *mq.UserProfile, errorMessage string, successMessage string, lang string) {
+	@tuicard.Card() {
+		@tuicard.Header() {
+			@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+				{ Trl(ctx, L.Users.ChangePassword) }
+			}
+		}
+		@tuicard.Content() {
+			if errorMessage != "" {
+				@uiform.Notice(uiform.NoticeProps{
+					Variant: uiform.MessageVariantError,
+					Class:   "w-full mb-3",
+					Title:   "Error",
+				}) {
+					{ errorMessage }
+				}
+			}
+			if successMessage != "" {
+				@uiform.Notice(uiform.NoticeProps{
+					Variant: uiform.MessageVariantInfo,
+					Class:   "w-full mb-3",
+				}) {
+					{ successMessage }
+				}
+			}
+			{{ setPwAction := router.Reverse(router.Auth.SetPasswordForCurrentUser) }}
+			@uiform.Form(uiform.FormProps{
+				Class:  "flex flex-col gap-3 max-w-md",
+				Action: setPwAction,
+				Method: "post",
+				Attributes: templ.Attributes{
+					"hx-post": setPwAction,
+					"hx-swap": "outerHTML",
+				},
+			}) {
+				@uiform.Item(uiform.ItemProps{Class: "space-y-1.5"}) {
+					@uiform.Label(uiform.LabelProps{For: "password"}) {
+						{ Trl(ctx, L.Auth.NewPassword) }
+					}
+					@uiinput.Input(uiinput.Props{
+						ID:       "password",
+						Name:     "password",
+						Type:     "password",
+						Required: true,
+					})
+				}
+				@uiform.Item(uiform.ItemProps{Class: "space-y-1.5"}) {
+					@uiform.Label(uiform.LabelProps{For: "confirm_password"}) {
+						{ Trl(ctx, L.Auth.ConfirmPassword) }
+					}
+					@uiinput.Input(uiinput.Props{
+						ID:       "confirm_password",
+						Name:     "confirm_password",
+						Type:     "password",
+						Required: true,
+					})
+				}
+				<div class="flex justify-end">
+					@uibutton.Button(uibutton.Props{
+						Type:  "submit",
+						Color: "primary",
+						Size:  "sm",
+						Label: Trl(ctx, L.Auth.SavePassword),
+					})
+				</div>
+			}
+		}
+	}
+}

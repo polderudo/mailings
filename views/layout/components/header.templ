@@ -1,0 +1,44 @@
+package layout
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	"app/mq"
+	tuibutton "github.com/templui/templui/components/button"
+	tuiicon "github.com/templui/templui/components/icon"
+	tuisidebar "github.com/templui/templui/components/sidebar"
+)
+
+templ UserHeader(user *mq.UserProfile, lang string, pageTitle string) {
+	if user != nil {
+		<header
+			id="layout-topbar"
+			class="h-16 bg-card border-b px-4 flex items-center shrink-0">
+			<div class="w-full flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					@tuisidebar.Trigger()
+					if len(pageTitle) > 0 {
+						<h1 id="page-title" class="text-lg font-semibold">{ pageTitle }</h1>
+					}
+				</div>
+				<div class="flex items-center gap-2">
+					@Lang(lang)
+					<span class="text-sm text-muted-foreground hidden sm:inline">{ user.Email }</span>
+					@tuibutton.Button(tuibutton.Props{
+						Size:    tuibutton.SizeIcon,
+						Variant: tuibutton.VariantGhost,
+						Attributes: templ.Attributes{
+							"aria-label": Trl(ctx, L.Ui.Logout),
+							"title":      Trl(ctx, L.Ui.Logout),
+							"hx-post":    router.Reverse(router.Anon.Logoff),
+							"hx-swap":    "transition:true",
+							"hx-target":  "#main",
+						},
+					}) {
+						@tuiicon.LogOut(tuiicon.Props{Class: "size-4"})
+					}
+				</div>
+			</div>
+		</header>
+	}
+}

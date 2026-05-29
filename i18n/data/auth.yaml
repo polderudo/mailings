@@ -1,0 +1,170 @@
+- EN: Login
+  DE: Anmeldung
+
+- EN: Sign in
+  DE: Anmelden
+
+- EN: "Seamless access, secure connection, and a dedicated sign-in screen for returning users."
+  DE: "Nahtloser Zugriff, sichere Verbindung und eine eigene Anmeldeseite fuer wiederkehrende Benutzer."
+
+- EN: "Don't have an account?"
+  DE: "Noch kein Konto?"
+
+- EN: Create one
+  DE: Jetzt erstellen
+
+- EN: Create account
+  DE: Konto erstellen
+
+- EN: "Set up your profile on a separate registration page and keep the sign-in flow focused for existing users."
+  DE: "Richte dein Profil auf einer separaten Registrierungsseite ein und halte den Anmeldeprozess fuer bestehende Benutzer fokussiert."
+
+- EN: "Already have an account?"
+  DE: "Hast du bereits ein Konto?"
+
+- EN: Email
+  DE: E-Mail
+
+- EN: Please enter a valid email address
+  DE: Bitte gib eine gueltige E-Mail-Adresse ein
+
+- EN: Password
+  DE: Passwort
+
+- EN: Must be at least 8 characters long
+  DE: Muss mindestens 8 Zeichen lang sein
+
+- EN: First name
+  DE: Vorname
+
+- EN: Please enter a valid first name
+  DE: Bitte gib einen gueltigen Vornamen ein
+
+- EN: Last name
+  DE: Nachname
+
+- EN: Please enter a valid last name
+  DE: Bitte gib einen gueltigen Nachnamen ein
+
+- EN: Mr.
+  DE: Herr
+
+- EN: Ms.
+  DE: Frau
+
+- EN: Confirm Password
+  DE: Passwort bestaetigen
+
+- EN: "I agree with the terms and conditions."
+  DE: "Ich stimme den Allgemeinen Geschaeftsbedingungen zu."
+
+- EN: "You have entered wrong credentials."
+  DE: "Die eingegebenen Zugangsdaten sind ungueltig."
+
+- EN: "Unable to create the account with the provided data."
+  DE: "Das Konto konnte mit den angegebenen Daten nicht erstellt werden."
+
+- EN: "Passwords do not match."
+  DE: "Die Passwoerter stimmen nicht ueberein."
+
+- EN: "A user with this email already exists."
+  DE: "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits."
+
+- EN: Send reset link
+  DE: Passwort-Reset-Link senden
+
+- EN: Save password
+  DE: Passwort speichern
+
+- EN: Reset password
+  DE: Passwort zurücksetzen
+
+- EN: "Enter your email address and we'll send you a link to reset your password."
+  DE: "Gib deine E-Mail-Adresse ein, dann senden wir dir einen Link zum Zurücksetzen deines Passworts."
+
+- EN: "Remembered your password?"
+  DE: "Passwort wieder eingefallen?"
+
+- EN: Create a new password
+  DE: Neues Passwort erstellen
+
+- EN: "Choose a new password (min. 8 characters)."
+  DE: "Wähle ein neues Passwort (mind. 8 Zeichen)."
+
+- EN: "Back to login?"
+  DE: "Zurück zum Login?"
+
+- EN: New password
+  DE: Neues Passwort
+
+- EN: "Please enter a valid password (min 8 chars)."
+  DE: "Bitte gib ein gültiges Passwort ein (mind. 8 Zeichen)."
+
+- EN: "The reset link is invalid or expired."
+  DE: "Der Reset-Link ist ungültig oder abgelaufen."
+
+- EN: "If the email exists in our system, you'll receive a reset link shortly."
+  DE: "Falls die E-Mail bei uns existiert, erhältst du in Kürze einen Reset-Link."
+
+- EN: "You have signed in successfully."
+  DE: "Du hast dich erfolgreich angemeldet."
+
+- EN: Next
+  DE: Weiter
+
+- EN: Registration
+  DE: Registrierung
+
+- EN: Create your account with your personal details.
+  DE: Erstellen Sie Ihr Konto mit Ihren persoenlichen Daten.
+
+- EN: Profile picture
+  DE: Profilbild
+
+- EN: Optionally upload an avatar or keep the default.
+  DE: Optional ein Avatar hochladen oder das Standardbild behalten.
+
+- EN: Complete the registration form to continue to the optional avatar step.
+  DE: Fuellen Sie das Registrierungsformular aus, um mit dem optionalen Avatar-Schritt fortzufahren.
+
+- EN: Your account is created. Upload an avatar or continue with the default, then go to sign in.
+  DE: Ihr Konto wurde erstellt. Laden Sie einen Avatar hoch oder nutzen Sie das Standardbild, melden Sie sich dann an.
+
+- EN: "Optional. Supported formats: JPG, PNG, GIF. Max size: 500KB. Leave empty to keep the default image."
+  DE: "Optional. Unterstuetzte Formate: JPG, PNG, GIF. Max. 500 KB. Leer lassen fuer Standardbild."
+
+- EN: Could not save the image. Check format and size (max 500KB).
+  DE: Bild konnte nicht gespeichert werden. Pruefen Sie Format und Groesse (max. 500 KB).
+
+- EN: Optionally add a profile picture, then continue to sign in.
+  DE: Optional ein Profilbild hinzufuegen, danach zur Anmeldung.
+
+- EN: Please enter a valid salutation
+  DE: Bitte gib eine gültige Anrede ein
+
+- EN: Forgot your password?
+  DE: Passwort vergessen?
+
+- EN: Select your organization
+  DE: Wählen Sie Ihre Sparkasse
+  
+- EN: Select your branch
+  DE: Wählen Sie Ihre Geschäftsstelle
+
+- EN: Organization
+  DE: Sparkasse
+
+- EN: Branch
+  DE: Geschäftsstelle
+
+- EN: Please select an organization
+  DE: Bitte wählen Sie eine Sparkasse aus
+
+- EN: Please select a branch
+  DE: Bitte wählen Sie eine Geschäftsstelle aus
+
+- EN: Continue
+  DE: Weiter
+
+- EN: Back
+  DE: Zurück

@@ -1,0 +1,192 @@
+package mailingsview
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	"strconv"
+	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
+	breadcrumb "github.com/templui/templui/components/breadcrumb"
+	tuicard "github.com/templui/templui/components/card"
+)
+
+type MailingNewFormData struct {
+	Templates []*mq.MailTemplate
+	Lists     []*mq.MailList
+	Domains   []*mq.MailDomain
+}
+
+type MailingDetailData struct {
+	Mailing      *mq.Mailing
+	TemplateName string
+	ListName     string
+	Domain       string
+}
+
+templ MailingNew(user *mq.UserProfile, lang string, data MailingNewFormData) {
+	@UserLayout(user, lang, Trl(ctx, L.Mailings.NewMailing)) {
+		@MailingNewPage(lang, data)
+	}
+}
+
+templ MailingNewPage(lang string, data MailingNewFormData) {
+	{{ createAction := router.Reverse(router.Mailings.Create) }}
+	<div class="space-y-4">
+		@breadcrumb.Breadcrumb() {
+			@breadcrumb.List(breadcrumb.ListProps{Class: "text-xs"}) {
+				@breadcrumb.Item() {
+					@breadcrumb.Link(breadcrumb.LinkProps{Href: router.Reverse(router.Mailings.List)}) {
+						{ Trl(ctx, L.Mailings.AllMailings) }
+					}
+				}
+				@breadcrumb.Item() {
+					@breadcrumb.Separator()
+					@breadcrumb.Page(breadcrumb.ItemProps{Class: "font-bold"}) {
+						{ Trl(ctx, L.Mailings.NewMailing) }
+					}
+				}
+			}
+		}
+		@tuicard.Card() {
+			@tuicard.Content() {
+				@uiform.Form(uiform.FormProps{
+					Class:  "flex flex-col gap-4",
+					Action: createAction,
+					Method: "post",
+					Attributes: templ.Attributes{
+						"hx-post":   createAction,
+						"hx-swap":   "outerHTML",
+						"hx-target": "this",
+					},
+				}) {
+					@uiform.Item() {
+						@uiform.Label(uiform.LabelProps{For: "name"}) {
+							{ Trl(ctx, L.Mailings.MailingName) }
+						}
+						@uiinput.Input(uiinput.Props{
+							ID:       "name",
+							Name:     "name",
+							Required: true,
+						})
+					}
+					@uiform.Item() {
+						@uiform.Label(uiform.LabelProps{For: "template_id"}) {
+							{ Trl(ctx, L.Mailings.Template) }
+						}
+						<select id="template_id" name="template_id" required class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring">
+							<option value="">{ Trl(ctx, L.Mailings.PleasePickATemplate) }</option>
+							for _, t := range data.Templates {
+								<option value={ strconv.Itoa(int(t.ID)) }>{ t.Name }</option>
+							}
+						</select>
+					}
+					@uiform.Item() {
+						@uiform.Label(uiform.LabelProps{For: "list_id"}) {
+							{ Trl(ctx, L.Mailings.EmailList) }
+						}
+						<select id="list_id" name="list_id" required class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring">
+							<option value="">{ Trl(ctx, L.Mailings.PleasePickAnEmailList) }</option>
+							for _, l := range data.Lists {
+								<option value={ strconv.Itoa(int(l.ID)) }>{ l.Name }</option>
+							}
+						</select>
+					}
+					@uiform.Item() {
+						@uiform.Label(uiform.LabelProps{For: "domain_id"}) {
+							{ Trl(ctx, L.Mailings.Domain) }
+						}
+						<select id="domain_id" name="domain_id" required class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring">
+							<option value="">{ Trl(ctx, L.Mailings.PleasePickADomain) }</option>
+							for _, d := range data.Domains {
+								<option value={ strconv.Itoa(int(d.ID)) }>{ d.Domain }</option>
+							}
+						</select>
+					}
+					<div class="flex justify-end">
+						@uibutton.Button(uibutton.Props{
+							Type:  "submit",
+							Color: "primary",
+							Size:  "sm",
+							Label: Trl(ctx, L.Mailings.CreateMailing),
+						})
+					</div>
+				}
+			}
+		}
+	</div>
+}
+
+templ MailingDetail(user *mq.UserProfile, lang string, data MailingDetailData) {
+	@UserLayout(user, lang, Trl(ctx, L.Mailings.MailingDetail)) {
+		@MailingDetailPage(lang, data)
+	}
+}
+
+templ MailingDetailPage(lang string, data MailingDetailData) {
+	<div class="space-y-4">
+		@breadcrumb.Breadcrumb() {
+			@breadcrumb.List(breadcrumb.ListProps{Class: "text-xs"}) {
+				@breadcrumb.Item() {
+					@breadcrumb.Link(breadcrumb.LinkProps{Href: router.Reverse(router.Mailings.List)}) {
+						{ Trl(ctx, L.Mailings.AllMailings) }
+					}
+				}
+				@breadcrumb.Item() {
+					@breadcrumb.Separator()
+					@breadcrumb.Page(breadcrumb.ItemProps{Class: "font-bold"}) {
+						{ data.Mailing.Name }
+					}
+				}
+			}
+		}
+		@MailingInfo(lang, data)
+	</div>
+}
+
+templ MailingInfo(lang string, data MailingDetailData) {
+	<div id="mailing-info">
+		@tuicard.Card() {
+			@tuicard.Header() {
+				@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
+					{ data.Mailing.Name }
+				}
+			}
+			@tuicard.Content() {
+				<dl class="grid grid-cols-2 gap-y-1 text-sm">
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.Template) }:</dt>
+					<dd>{ data.TemplateName }</dd>
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.EmailList) }:</dt>
+					<dd>{ data.ListName }</dd>
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.Domain) }:</dt>
+					<dd>{ data.Domain }</dd>
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.MailingStatus) }:</dt>
+					<dd class="font-medium">{ data.Mailing.Status }</dd>
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.TotalRecipients) }:</dt>
+					<dd>{ strconv.Itoa(int(data.Mailing.TotalRecipients)) }</dd>
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.SentCount) }:</dt>
+					<dd>{ strconv.Itoa(int(data.Mailing.SentCount)) }</dd>
+					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.FailedCount) }:</dt>
+					<dd>{ strconv.Itoa(int(data.Mailing.FailedCount)) }</dd>
+				</dl>
+				if data.Mailing.Status == "draft" {
+					<div class="flex justify-end pt-4">
+						@uibutton.Button(uibutton.Props{
+							Color: "primary",
+							Size:  "sm",
+							Label: Trl(ctx, L.Mailings.StartSending),
+							Attrs: templ.Attributes{
+								"hx-post":    router.Reverse(router.Mailings.Start, strconv.Itoa(int(data.Mailing.ID))),
+								"hx-target":  "#mailing-info",
+								"hx-swap":    "outerHTML",
+								"hx-confirm": Trl(ctx, L.Mailings.AreYouSureYouWantToStartTheMailing),
+							},
+						})
+					</div>
+				}
+			}
+		}
+	</div>
+}

@@ -1,0 +1,122 @@
+package layout
+
+import (
+	"app/mq"
+	. "app/views/layout/components"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
+	tuicalendar "github.com/templui/templui/components/calendar"
+	tuicollapsible "github.com/templui/templui/components/collapsible"
+	tuidatepicker "github.com/templui/templui/components/datepicker"
+	tuidialog "github.com/templui/templui/components/dialog"
+	tuidropdown "github.com/templui/templui/components/dropdown"
+	tuipopover "github.com/templui/templui/components/popover"
+	tuiprogress "github.com/templui/templui/components/progress"
+	tuiselectbox "github.com/templui/templui/components/selectbox"
+	tuisidebar "github.com/templui/templui/components/sidebar"
+	tuitoast "github.com/templui/templui/components/toast"
+)
+
+templ baseLayout(mainClass string) {
+	<!DOCTYPE html>
+	<html lang="en" class="group/html">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="description" content="Mailings — Newsletter and Mailing tool"/>
+			<meta name="google" content="notranslate"/>
+			<link rel="shortcut icon" href="/static/img/templ.png" type="image/png"/>
+			<link rel="stylesheet" href="/static/css/output.css" type="text/css"/>
+
+			<title>Mailings</title>
+			<script defer src="/static/js/htmx.min.js"></script>
+			<script defer src="/static/js/toast.js"></script>
+			<script defer src="/static/js/hyperscript.min.js"></script>
+			<script defer src="/static/js/alpinejs.min.js"></script>
+			<link rel="icon" type="image/png" href="/static/img/templ.png"/>
+			@uiinput.Script()
+			@tuisidebar.Script()
+			@tuidialog.Script()
+			@tuicollapsible.Script()
+			@tuidropdown.Script()
+			@tuipopover.Script()
+			@tuiselectbox.Script()
+			@tuitoast.Script()
+			@tuicalendar.Script()
+			@tuidatepicker.Script()
+			@tuiprogress.Script()
+			<script>
+				try {
+					const localStorageItem = localStorage.getItem("mailings")
+					if (localStorageItem) {
+						const theme = JSON.parse(localStorageItem).theme
+						if (theme !== "system") {
+							document.documentElement.setAttribute("data-theme", theme)
+						}
+					}
+				} catch (err) {
+					console.log(err)
+				}
+			</script>
+			<script>
+				document.addEventListener("click", function(e) {
+					var el = e.target.closest("[data-page-title]");
+					if (el) {
+						var t = el.getAttribute("data-page-title");
+						var h = document.getElementById("page-title");
+						if (h && t !== null) h.textContent = t;
+					}
+				});
+			</script>
+		</head>
+		<body class="sample-transition mx-auto" hx-boost="true">
+			<div id="app-alerts" class="pointer-events-none fixed inset-0 z-50"></div>
+			<main id="main" class={ mainClass }>
+				{ children... }
+			</main>
+		</body>
+	</html>
+}
+
+templ GuestLayout() {
+	@baseLayout("flex min-h-screen w-full items-center justify-center p-2 sm:px-4 sm:py-6 mx-auto") {
+		<div class="mx-auto">
+			{ children... }
+		</div>
+	}
+}
+
+templ UserLayout(user *mq.UserProfile, lang string, pageTitle string) {
+	@baseLayout("size-full") {
+		<div
+			class="size-full"
+			hx-target="#layout-content-body"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			hx-indicator="#layout-content-skeleton">
+			@tuisidebar.Layout(tuisidebar.LayoutProps{
+				ID:    "mailings-sidebar",
+				Class: "h-svh overflow-hidden",
+			}) {
+				@MailingsSidebar()
+				<div class="flex flex-1 flex-col h-svh overflow-hidden">
+					@UserHeader(user, lang, pageTitle)
+					<main class="flex-1 min-h-0 overflow-y-auto">
+						<div id="layout-content" class="relative">
+							<div id="layout-content-skeleton" class="pointer-events-none absolute inset-0 z-10 hidden htmx-indicator">
+								<div class="bg-base-100/90 size-full p-6 backdrop-blur-[1px]">
+									<div class="mx-auto flex max-w-6xl flex-col gap-4">
+										<div class="skeleton h-8 w-52"></div>
+										<div class="skeleton h-24 w-full"></div>
+									</div>
+								</div>
+							</div>
+							<div id="layout-content-body" class="mx-auto flex min-h-full max-w-6xl flex-col gap-6 p-6">
+								{ children... }
+							</div>
+						</div>
+					</main>
+				</div>
+			}
+		</div>
+	}
+}

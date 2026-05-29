@@ -1,0 +1,60 @@
+package templatesview
+
+import (
+	"app/api/router"
+	"app/db"
+	. "app/i18n"
+	"app/mq"
+	. "app/views/layout"
+	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	breadcrumb "github.com/templui/templui/components/breadcrumb"
+)
+
+templ Templates(user *mq.UserProfile, lang string, rows []db.MailTemplateTableRow, request globaltable.Request, total int64) {
+	@UserLayout(user, lang, Trl(ctx, L.Templates.AllTemplates)) {
+		@TemplatesPage(lang, rows, request, total)
+	}
+}
+
+templ TemplatesPage(lang string, rows []db.MailTemplateTableRow, request globaltable.Request, total int64) {
+	<div class="space-y-4">
+		@TemplatesBreadcrumbs(lang)
+		<div class="flex justify-end">
+			@uibutton.Button(uibutton.Props{
+				Color: "primary",
+				Size:  "sm",
+				Label: Trl(ctx, L.Templates.NewTemplate),
+				Attrs: templ.Attributes{
+					"hx-get":      router.Reverse(router.Templates.New),
+					"hx-push-url": "true",
+				},
+			})
+		</div>
+		<div>
+			@CurrentTemplatesTable(lang, rows, request, total)
+		</div>
+	</div>
+}
+
+templ TemplatesBreadcrumbs(lang string) {
+	@breadcrumb.Breadcrumb() {
+		@breadcrumb.List(breadcrumb.ListProps{Class: "text-xs"}) {
+			@breadcrumb.Item() {
+				@breadcrumb.Link(breadcrumb.LinkProps{Href: "/"}) {
+					{ Trl(ctx, L.Navigation.Home) }
+				}
+			}
+			@breadcrumb.Item() {
+				@breadcrumb.Separator()
+				{ Trl(ctx, L.Mailings.Mailings) }
+			}
+			@breadcrumb.Item() {
+				@breadcrumb.Separator()
+				@breadcrumb.Page(breadcrumb.ItemProps{Class: "font-bold"}) {
+					{ Trl(ctx, L.Templates.AllTemplates) }
+				}
+			}
+		}
+	}
+}

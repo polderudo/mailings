@@ -1,0 +1,76 @@
+package loginview
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
+)
+
+templ LoginFormCard(loginError string, lang string) {
+	if loginError != "" {
+		<div class="w-full max-w-sm mx-auto pt-4">
+			@uiform.Notice(uiform.NoticeProps{
+				Variant: uiform.MessageVariantError,
+				Class:   "w-full",
+				Title:   "Error",
+			}) {
+				{ loginError }
+			}
+		</div>
+	}
+	@uiform.Form(uiform.FormProps{
+		Class:  "flex flex-col gap-5 w-full max-w-sm",
+		Action: router.Reverse(router.Anon.Login),
+		Method: "post",
+		Attributes: templ.Attributes{
+			"hx-swap":    "transition:true",
+			"hx-headers": "js:{'X-TimeZone': Intl.DateTimeFormat().resolvedOptions().timeZone}",
+		},
+	}) {
+		@uiform.Item(uiform.ItemProps{Class: "space-y-1.5"}) {
+			@uiform.Label(uiform.LabelProps{For: "email"}) {
+				{ Trl(ctx, L.Auth.Email) }
+			}
+			@uiinput.Input(uiinput.Props{
+				ID:          "email",
+				Name:        "email",
+				Type:        uiinput.TypeEmail,
+				Required:    true,
+				Placeholder: Trl(ctx, L.Auth.Email),
+				Attributes: templ.Attributes{
+					"pattern": `^[^\s@]+@[^\s@]+\.[^\s@]+$`,
+					"title":   Trl(ctx, L.Auth.PleaseEnterAValidEmailAddress),
+				},
+			})
+		}
+		@uiform.Item(uiform.ItemProps{Class: "space-y-1.5"}) {
+			@uiform.Label(uiform.LabelProps{For: "password"}) {
+				{ Trl(ctx, L.Auth.Password) }
+			}
+			@uiinput.Input(uiinput.Props{
+				ID:          "password",
+				Name:        "password",
+				Type:        "password",
+				Required:    true,
+				Placeholder: Trl(ctx, L.Auth.Password),
+				Attributes: templ.Attributes{
+					"pattern": `^.{8,255}$`,
+					"title":   Trl(ctx, L.Auth.MustBeAtLeast8CharactersLong),
+				},
+			})
+		}
+		<a class="text-sm text-vkb-link hover:underline hover:text-vkb-link-hover" href={ templ.SafeURL(router.Reverse(router.Anon.ForgotPasswordPage)) }>
+			{ Trl(ctx, L.Auth.ForgotYourPassword) }
+		</a>
+		<div class="flex justify-end">
+			@uibutton.Button(uibutton.Props{
+				Type:  "submit",
+				Color: "primary",
+				Size:  "sm",
+				Label: Trl(ctx, L.Auth.SignIn),
+			})
+		</div>
+	}
+}
