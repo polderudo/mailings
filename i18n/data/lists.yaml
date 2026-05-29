@@ -57,3 +57,24 @@
 
 - EN: Search list
   DE: Liste suchen
+
+- EN: "Excel header columns: Email, Vorname, Nachname"
+  DE: "Excel-Kopfzeile mit den Spalten: Email, Vorname, Nachname"
+
+- EN: Could not read Excel file
+  DE: Excel-Datei konnte nicht gelesen werden
+
+- EN: Import failed
+  DE: Import fehlgeschlagen
+
+- EN: Remove recipient?
+  DE: Empfänger entfernen?
+
+- EN: This will permanently remove the recipient from the list.
+  DE: Der Empfänger wird dauerhaft aus der Liste entfernt.
+
+- EN: Recipient removed
+  DE: Empfänger entfernt
+
+- EN: Recipient not found
+  DE: Empfänger nicht gefunden

@@ -7,10 +7,14 @@ import (
 	. "app/views/layout"
 	"strconv"
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	uidropzone "github.com/nakami-lounge-GmbH/ui-components/dropzone"
 	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
 	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
 	breadcrumb "github.com/templui/templui/components/breadcrumb"
+	tuibutton "github.com/templui/templui/components/button"
 	tuicard "github.com/templui/templui/components/card"
+	tuidialog "github.com/templui/templui/components/dialog"
+	tuiicon "github.com/templui/templui/components/icon"
 )
 
 type ListFormData struct {
@@ -138,25 +142,26 @@ templ ListImportPanel(lang string, data ListFormData) {
 			}
 		}
 		@tuicard.Content() {
-			<p class="text-xs text-muted-foreground mb-2">
-				{ Trl(ctx, L.Lists.OneEmailPerLineOptionallyFollowedQvz235ea) }
-			</p>
 			{{ importAction := router.Reverse(router.Lists.Import, strconv.Itoa(int(data.ID))) }}
 			@uiform.Form(uiform.FormProps{
 				Class:  "flex flex-col gap-3",
 				Action: importAction,
 				Method: "post",
 				Attributes: templ.Attributes{
-					"hx-post":   importAction,
-					"hx-swap":   "outerHTML",
-					"hx-target": "#list-recipients-panel",
+					"hx-post":         importAction,
+					"hx-swap":         "outerHTML",
+					"hx-target":       "#list-recipients-panel",
+					"hx-encoding":     "multipart/form-data",
+					"enctype":         "multipart/form-data",
 				},
 			}) {
-				<textarea
-					name="recipients"
-					rows="8"
-					placeholder={ Trl(ctx, L.Lists.PasteEmailAddressesOnePerLine) }
-					class="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"></textarea>
+				@uidropzone.Dropzone(uidropzone.Props{
+					Name:              "file",
+					AllowedExtensions: []string{"xlsx"},
+					MaxSizeBytes:      10 * 1024 * 1024,
+					Description:       Trl(ctx, L.Lists.ExcelHeaderColumnsEmailVornameNachname),
+					Required:          true,
+				})
 				<div class="flex justify-end">
 					@uibutton.Button(uibutton.Props{
 						Type:  "submit",
@@ -171,7 +176,11 @@ templ ListImportPanel(lang string, data ListFormData) {
 }
 
 templ ListRecipientsPanel(lang string, data ListFormData) {
-	<div id="list-recipients-panel">
+	{{ deleteURLPattern := router.Reverse(router.Lists.DeleteRecipient, strconv.Itoa(int(data.ID)), "__REC__") }}
+	<div
+		id="list-recipients-panel"
+		x-data={ "{ pendingRecId: 0, pendingRecEmail: '', deleteURLPattern: " + alpineString(deleteURLPattern) + " }" }
+	>
 		@tuicard.Card() {
 			@tuicard.Header() {
 				@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
@@ -189,6 +198,7 @@ templ ListRecipientsPanel(lang string, data ListFormData) {
 									<th class="py-2 pr-3">{ Trl(ctx, L.Auth.Email) }</th>
 									<th class="py-2 pr-3">{ Trl(ctx, L.Auth.FirstName) }</th>
 									<th class="py-2 pr-3">{ Trl(ctx, L.Auth.LastName) }</th>
+									<th class="py-2 w-10"></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -197,6 +207,21 @@ templ ListRecipientsPanel(lang string, data ListFormData) {
 										<td class="py-1 pr-3">{ r.Email }</td>
 										<td class="py-1 pr-3">{ r.Forename }</td>
 										<td class="py-1 pr-3">{ r.Lastname }</td>
+										<td class="py-1 text-right">
+											@tuibutton.Button(tuibutton.Props{
+												Size:    tuibutton.SizeIcon,
+												Variant: tuibutton.VariantGhost,
+												Class:   "size-7 text-muted-foreground hover:text-destructive",
+												Attributes: templ.Attributes{
+													"type":       "button",
+													"aria-label": Trl(ctx, L.Lists.DeleteRecipient),
+													"title":      Trl(ctx, L.Lists.DeleteRecipient),
+													"@click":     "pendingRecId = " + strconv.Itoa(int(r.ID)) + "; pendingRecEmail = " + alpineString(r.Email) + "; window.tui.dialog.open('confirm-delete-recipient')",
+												},
+											}) {
+												@tuiicon.Minus(tuiicon.Props{Class: "size-4"})
+											}
+										</td>
 									</tr>
 								}
 							</tbody>
@@ -205,5 +230,59 @@ templ ListRecipientsPanel(lang string, data ListFormData) {
 				}
 			}
 		}
+		@confirmDeleteRecipientDialog(lang)
 	</div>
+}
+
+// alpineString quotes a Go string so it can be embedded inside a templ string
+// attribute that itself ends up as an x-on:click expression. Single quotes are
+// used as the JS string delimiter, single quotes inside the value are escaped.
+func alpineString(s string) string {
+	out := make([]byte, 0, len(s)+2)
+	out = append(out, '\'')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '\\', '\'':
+			out = append(out, '\\', c)
+		default:
+			out = append(out, c)
+		}
+	}
+	out = append(out, '\'')
+	return string(out)
+}
+
+templ confirmDeleteRecipientDialog(lang string) {
+	@tuidialog.Dialog(tuidialog.Props{ID: "confirm-delete-recipient"}) {
+		@tuidialog.Content() {
+			@tuidialog.Header() {
+				@tuidialog.Title() { { Trl(ctx, L.Lists.RemoveRecipient) } }
+				@tuidialog.Description() {
+					{ Trl(ctx, L.Lists.ThisWillPermanentlyRemoveTheRecipK5lat5y3) }
+					<br/>
+					<span class="font-medium" x-text="pendingRecEmail"></span>
+				}
+			}
+			@tuidialog.Footer() {
+				@tuidialog.Close() {
+					@uibutton.Button(uibutton.Props{
+						Color: "secondary",
+						Size:  "sm",
+						Label: Trl(ctx, L.Users.Cancel),
+						Attrs: templ.Attributes{"type": "button"},
+					})
+				}
+				@uibutton.Button(uibutton.Props{
+					Color: "primary",
+					Size:  "sm",
+					Label: Trl(ctx, L.Lists.DeleteRecipient),
+					Attrs: templ.Attributes{
+						"type":   "button",
+						"@click": "htmx.ajax('DELETE', deleteURLPattern.replace('__REC__', pendingRecId), {target: '#list-recipients-panel', swap: 'outerHTML'}); window.tui.dialog.close('confirm-delete-recipient');",
+					},
+				})
+			}
+		}
+	}
 }

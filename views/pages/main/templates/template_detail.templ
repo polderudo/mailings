@@ -3,8 +3,10 @@ package templatesview
 import (
 	"app/api/router"
 	. "app/i18n"
+	"app/mail/snippet"
 	"app/mq"
 	. "app/views/layout"
+	"encoding/json"
 	"strconv"
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
 	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
@@ -14,12 +16,12 @@ import (
 )
 
 type TemplateFormData struct {
-	ID        int32
-	Name      string
-	Subject   string
-	BodyHTML  string
-	BodyDelta string
-	IsNew     bool
+	ID       int32
+	Name     string
+	Subject  string
+	BodyHTML string
+	IsNew    bool
+	Snippets []snippet.Snippet
 }
 
 templ TemplateDetail(user *mq.UserProfile, lang string, data TemplateFormData) {
@@ -31,7 +33,19 @@ templ TemplateDetail(user *mq.UserProfile, lang string, data TemplateFormData) {
 templ TemplateDetailPage(lang string, data TemplateFormData) {
 	<div class="space-y-4">
 		@TemplateDetailBreadcrumbs(lang, data)
-		@TemplateForm(lang, data)
+		@tuicard.Card() {
+			@tuicard.Content() {
+				@TemplateForm(lang, data)
+			}
+		}
+		// TinyMCE-Assets + Init-Skript leben hier, *außerhalb* der Form, aber
+		// BEWUSST UNTER der Card, damit das `<textarea id="template-editor">`
+		// schon im DOM ist, bevor das Init-Skript läuft. So findet tinymce.init
+		// sein Source-Element auf Anhieb.
+		// Beim htmx-Swap auf die Form werden Assets nicht erneut emittiert;
+		// die einmal an `document.body` gebundenen Listener übernehmen den
+		// Re-Init des Editors.
+		@tinymceAssets()
 	</div>
 }
 
@@ -63,152 +77,323 @@ templ TemplateDetailBreadcrumbs(lang string, data TemplateFormData) {
 	}
 }
 
+// TemplateForm rendert ausschließlich das `<form>`-Element — KEIN umgebender
+// Card-Wrapper, KEINE script-Tags. Damit kann `hx-target=this; hx-swap=outerHTML`
+// die Form bei jedem Save 1:1 ersetzen, ohne dass sich der Card-Container
+// kaskadiert.
 templ TemplateForm(lang string, data TemplateFormData) {
-	@quillAssets()
 	{{
 		formAction := router.Reverse(router.Templates.Create)
 		if !data.IsNew {
 			formAction = router.Reverse(router.Templates.Update, strconv.Itoa(int(data.ID)))
 		}
 	}}
-	@tuicard.Card() {
-		@tuicard.Content() {
-			@uiform.Form(uiform.FormProps{
-				Class:  "flex flex-col gap-4",
-				Action: formAction,
-				Method: "post",
-				Attributes: templ.Attributes{
-					"hx-post":   formAction,
-					"hx-swap":   "outerHTML",
-					"hx-target": "this",
-					"x-data":    quillAlpineData(data.BodyDelta, data.BodyHTML),
-				},
-			}) {
-				@uiform.Item() {
-					@uiform.Label(uiform.LabelProps{For: "name"}) {
-						{ Trl(ctx, L.Templates.TemplateName) }
-					}
-					@uiinput.Input(uiinput.Props{
-						ID:       "name",
-						Name:     "name",
-						Value:    data.Name,
-						Required: true,
-					})
-				}
-				@uiform.Item() {
-					@uiform.Label(uiform.LabelProps{For: "subject"}) {
-						{ Trl(ctx, L.Templates.Subject) }
-					}
-					@uiinput.Input(uiinput.Props{
-						ID:    "subject",
-						Name:  "subject",
-						Value: data.Subject,
-					})
-				}
-				@uiform.Item() {
-					@uiform.Label() {
-						{ Trl(ctx, L.Templates.Body) }
-					}
-					<div id="template-editor" class="bg-base-100 min-h-[400px]"></div>
-					<input type="hidden" name="body_html" x-ref="bodyHtml" x-model="bodyHtml"/>
-					<input type="hidden" name="body_delta" x-ref="bodyDelta" x-model="bodyDelta"/>
-				}
-				<div class="flex justify-between items-center pt-2">
-					if !data.IsNew {
-						@uibutton.Button(uibutton.Props{
-							Color: "secondary",
-							Size:  "sm",
-							Label: Trl(ctx, L.Templates.DeleteTemplate),
-							Attrs: templ.Attributes{
-								"hx-delete":  router.Reverse(router.Templates.Delete, strconv.Itoa(int(data.ID))),
-								"hx-confirm": Trl(ctx, L.Templates.DeleteTemplate) + "?",
-							},
-						})
-					} else {
-						<span></span>
-					}
-					@uibutton.Button(uibutton.Props{
-						Type:  "submit",
-						Color: "primary",
-						Size:  "sm",
-						Label: Trl(ctx, L.Templates.SaveTemplate),
-						Attrs: templ.Attributes{
-							"@click": "syncQuill()",
-						},
-					})
-				</div>
-			}
-		}
-	}
-}
-
-func quillAlpineData(delta, html string) string {
-	d := delta
-	if d == "" {
-		d = "{}"
-	}
-	return `{
-		bodyHtml: ` + jsString(html) + `,
-		bodyDelta: ` + jsString(d) + `,
-		quill: null,
-		init() {
-			const self = this;
-			const el = document.getElementById('template-editor');
-			if (!el || typeof Quill === 'undefined') {
-				return;
-			}
-			self.quill = new Quill(el, {
-				theme: 'snow',
-				modules: {
-					toolbar: [
-						[{ header: [1, 2, 3, false] }],
-						['bold', 'italic', 'underline'],
-						[{ list: 'ordered' }, { list: 'bullet' }],
-						[{ align: [] }],
-						['link', 'image'],
-						['clean'],
-					],
-				},
-			});
-			if (self.bodyDelta && self.bodyDelta !== '{}') {
-				try { self.quill.setContents(JSON.parse(self.bodyDelta)); }
-				catch (e) { self.quill.root.innerHTML = self.bodyHtml; }
-			} else if (self.bodyHtml) {
-				self.quill.root.innerHTML = self.bodyHtml;
-			}
+	@uiform.Form(uiform.FormProps{
+		Class:  "flex flex-col gap-4",
+		Action: formAction,
+		Method: "post",
+		Attributes: templ.Attributes{
+			"hx-post":   formAction,
+			"hx-swap":   "outerHTML",
+			"hx-target": "this",
 		},
-		syncQuill() {
-			if (!this.quill) return;
-			this.bodyHtml = this.quill.root.innerHTML;
-			this.bodyDelta = JSON.stringify(this.quill.getContents());
+	}) {
+		@uiform.Item() {
+			@uiform.Label(uiform.LabelProps{For: "name"}) {
+				{ Trl(ctx, L.Templates.TemplateName) }
+			}
+			@uiinput.Input(uiinput.Props{
+				ID:       "name",
+				Name:     "name",
+				Value:    data.Name,
+				Required: true,
+			})
 		}
-	}`
+		@uiform.Item() {
+			@uiform.Label(uiform.LabelProps{For: "subject"}) {
+				{ Trl(ctx, L.Templates.Subject) }
+			}
+			@uiinput.Input(uiinput.Props{
+				ID:    "subject",
+				Name:  "subject",
+				Value: data.Subject,
+			})
+		}
+		@uiform.Item() {
+			@uiform.Label(uiform.LabelProps{For: "template-editor"}) {
+				{ Trl(ctx, L.Templates.Body) }
+			}
+			// Das Source-Textarea trägt direkt name="body_html".
+			// TinyMCE's editor.save() / tinymce.triggerSave() schreibt
+			// den aktuellen Editor-Inhalt zurück hier hinein, und htmx
+			// liest diesen Wert beim Form-Submit via FormData ein.
+			@templateEditor(lang, data)
+		}
+		<div class="flex justify-between items-center pt-2">
+			if !data.IsNew {
+				@uibutton.Button(uibutton.Props{
+					Color: "secondary",
+					Size:  "sm",
+					Label: Trl(ctx, L.Templates.DeleteTemplate),
+					Attrs: templ.Attributes{
+						"hx-delete":  router.Reverse(router.Templates.Delete, strconv.Itoa(int(data.ID))),
+						"hx-confirm": Trl(ctx, L.Templates.DeleteTemplate) + "?",
+					},
+				})
+			} else {
+				<span></span>
+			}
+			@uibutton.Button(uibutton.Props{
+				Type:  "submit",
+				Color: "primary",
+				Size:  "sm",
+				Label: Trl(ctx, L.Templates.SaveTemplate),
+			})
+		</div>
+	}
 }
 
-func jsString(s string) string {
-	// Minimal escape for embedding into a JS string literal inside x-data.
-	b := make([]byte, 0, len(s)+2)
-	b = append(b, '"')
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch c {
-		case '"', '\\':
-			b = append(b, '\\', c)
-		case '\n':
-			b = append(b, '\\', 'n')
-		case '\r':
-			b = append(b, '\\', 'r')
-		case '\t':
-			b = append(b, '\\', 't')
-		default:
-			b = append(b, c)
-		}
+// snippetsJSON liefert die Snippet-Liste als JSON-Array für TinyMCE's
+// addMenuButton-Setup. Wir senden nur ID, Name, HTML — alles, was das
+// Setup-Skript für die Toolbar-Menüeinträge braucht.
+func snippetsJSON(snippets []snippet.Snippet) string {
+	if len(snippets) == 0 {
+		return "[]"
 	}
-	b = append(b, '"')
+	type item struct {
+		Name string `json:"name"`
+		HTML string `json:"html"`
+	}
+	out := make([]item, 0, len(snippets))
+	for _, s := range snippets {
+		out = append(out, item{Name: s.Name, HTML: s.HTML})
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return "[]"
+	}
 	return string(b)
 }
 
-templ quillAssets() {
-	<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"/>
-	<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+// templateEditor ist BEWUSST minimal: nur das Source-Textarea. Alles andere
+// (Snippet-Daten-Span, TinyMCE-Assets, Init-Skript) sitzt eine Ebene höher in
+// TemplateDetailPage und wird beim htmx-Swap auf die Form NICHT mit-ausgetauscht.
+templ templateEditor(lang string, data TemplateFormData) {
+	<textarea id="template-editor" name="body_html">{ data.BodyHTML }</textarea>
+}
+
+templ tinymceAssets() {
+	<script src="/static/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
+	<script src="/static/tinymce/langs/de.js"></script>
+	// Snippet-Liste als JSON-Daten-Attribut — liegt page-stabil im DOM (nicht
+	// in der Form), wird beim htmx-Swap also nicht angefasst.
+	@snippetsDataHost()
+	@tinymceInitScript()
+}
+
+templ snippetsDataHost() {
+	<span id="template-snippets-data" data-snippets={ snippetsJSONFromCtx() } style="display:none"></span>
+}
+
+// snippetsJSONFromCtx liefert die Snippet-Liste aus dem ctx (gesetzt durch
+// TemplateDetailPage). Wir nutzen ctx hier, damit `tinymceAssets()` selbst
+// keinen Slice-Parameter braucht — der Asset-Block bleibt parameterlos.
+func snippetsJSONFromCtx() string {
+	// Snippets kommen aus dem Package-Default. Da der Editor nur für
+	// Mail-Templates verwendet wird und die Liste statisch ist, holen wir
+	// sie hier direkt aus dem snippet-Package.
+	return snippetsJSON(snippet.All())
+}
+
+templ tinymceInitScript() {
+	<script>
+		(function() {
+			// Idempotenz-Guard: das Script darf in einem Edge-Case auch nach
+			// htmx-Swap erneut laufen (wenn der User direkt zur Detail-Seite
+			// navigiert anstatt zu speichern). Beim zweiten Aufruf nur den
+			// initEditor erneut feuern, KEINE Listener doppelt binden.
+			if (window.__tmceTemplateBound) {
+				window.__tmceTemplateBound();
+				return;
+			}
+
+			function snippetMenuItems(editor) {
+				let snippets = [];
+				try {
+					const host = document.getElementById('template-snippets-data');
+					const raw  = host && host.dataset ? host.dataset.snippets : '[]';
+					snippets = JSON.parse(raw || '[]');
+				} catch (e) {
+					console.warn('[tmce] snippet data parse failed', e);
+				}
+				return snippets.map(function(s) {
+					return {
+						type: 'menuitem',
+						text: s.name,
+						onAction: function() { editor.insertContent(s.html); },
+					};
+				});
+			}
+
+			// Race-Safe Init: bei sehr schnellem Mehrfach-Save kann afterSettle
+			// für den nächsten Swap feuern, während TinyMCE noch initialisiert.
+			// Wir tracken eine Pending-Promise und queuen den nächsten Init.
+			let initPromise = null;
+			let initQueued  = false;
+			function initEditor() {
+				if (!window.tinymce) return;
+				const ta = document.getElementById('template-editor');
+				if (!ta) return;
+				if (initPromise) {
+					initQueued = true;
+					return;
+				}
+				try { window.tinymce.remove('#template-editor'); } catch (e) {}
+				initPromise = window.tinymce.init({
+					selector: '#template-editor',
+					// `gpl` als License-Key: bestätigt explizit, dass wir die
+					// Community-Edition unter GPL v2+ nutzen — sonst druckt
+					// TinyMCE eine Evaluation-Warning in die Konsole.
+					license_key: 'gpl',
+					language: 'de',
+					base_url: '/static/tinymce',
+					suffix: '.min',
+					promotion: false,
+					branding: false,
+					menubar: false,
+					height: 500,
+					// `hr`, `fontfamily`, `fontsize`, `outdent`, `indent` sind
+					// in TinyMCE 7 alle als Toolbar-Items built-in und brauchen
+					// keinen Plugin-Eintrag. `table` kommt aus dem `table`-Plugin.
+					plugins: 'lists link image table autolink searchreplace fullscreen',
+					// Toolbar als Array von Strings → jede Zeile wird einzeln
+					// gerendert. Zeile 1: Text- & Inline-Formatierung,
+					// Zeile 2: Layout & Insert-Aktionen.
+					toolbar: [
+						'undo redo | blocks fontfamily fontsize | bold italic underline | removeformat',
+						'bullist numlist outdent indent | alignleft aligncenter alignright | link image hr table | snippets | fullscreen',
+					],
+					content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; }',
+
+					// --- Bild-Embedding: alles als data:base64 inline -----------
+					// Mails sollen autark sein (keine externen URLs, kein
+					// Server-Round-Trip). Drei Mechanismen, alle landen am Ende
+					// auf einer data:image/...;base64-URL im src-Attribut:
+					//
+					//   1. Drag&Drop / Toolbar-Image-Dialog → images_upload_handler
+					//      konvertiert die Datei via FileReader zur data-URL.
+					//   2. Paste aus dem Clipboard (Screenshot etc.) →
+					//      paste_data_images:true belässt das Bild inline.
+					//   3. „Datei auswählen" im Image-Dialog → file_picker_callback
+					//      öffnet einen FileInput und liefert die data-URL.
+					automatic_uploads: true,
+					paste_data_images: true,
+					images_reuse_filename: false,
+					file_picker_types: 'image',
+					images_upload_handler: function(blobInfo) {
+						return new Promise(function(resolve, reject) {
+							try {
+								const reader = new FileReader();
+								reader.onload  = function() { resolve(reader.result); };
+								reader.onerror = function() { reject('FileReader error'); };
+								reader.readAsDataURL(blobInfo.blob());
+							} catch (e) { reject(String(e)); }
+						});
+					},
+					file_picker_callback: function(callback, value, meta) {
+						if (meta.filetype !== 'image') return;
+						const input = document.createElement('input');
+						input.type   = 'file';
+						input.accept = 'image/*';
+						input.onchange = function() {
+							const file = this.files && this.files[0];
+							if (!file) return;
+							const reader = new FileReader();
+							reader.onload = function() {
+								callback(reader.result, { title: file.name });
+							};
+							reader.readAsDataURL(file);
+						};
+						input.click();
+					},
+					// ------------------------------------------------------------
+
+					setup: function(editor) {
+						editor.ui.registry.addMenuButton('snippets', {
+							text: 'Snippets',
+							tooltip: 'HTML-Schnipsel einfügen',
+							fetch: function(callback) { callback(snippetMenuItems(editor)); },
+						});
+
+						// Continuous sync: bei jeder Editor-Mutation den Inhalt
+						// zurück ins Source-Textarea schreiben. Damit ist
+						// `name="body_html"` jederzeit aktuell — egal wann htmx
+						// FormData baut.
+						const syncToTextarea = function() { editor.save(); };
+						editor.on('Change KeyUp Undo Redo SetContent ExecCommand', syncToTextarea);
+						editor.on('init', syncToTextarea);
+					},
+				});
+
+				// Auflösen der Init-Promise + ggf. Queued-Init nachholen
+				const done = function() {
+					initPromise = null;
+					if (initQueued) {
+						initQueued = false;
+						initEditor();
+					}
+				};
+				if (initPromise && typeof initPromise.then === 'function') {
+					initPromise.then(done, done);
+				} else {
+					done();
+				}
+			}
+
+			// Zusätzliche Sicherung: htmx feuert `htmx:configRequest`
+			// SYNCHRON vor dem Senden. Hier kommen wir nochmal an die
+			// Form-Element-Werte und können `triggerSave()` aufrufen, bevor
+			// die Parameter eingesammelt werden.
+			document.body.addEventListener('htmx:configRequest', function(evt) {
+				if (!window.tinymce) return;
+				window.tinymce.triggerSave();
+				// htmx hat zu diesem Zeitpunkt bereits `evt.detail.parameters`
+				// aus den Form-Elementen befüllt — wir patchen den frisch
+				// gesicherten body_html-Wert direkt nach.
+				const ta = document.getElementById('template-editor');
+				if (ta && evt.detail && evt.detail.parameters) {
+					evt.detail.parameters['body_html'] = ta.value;
+				}
+			});
+
+			window.__tmceTemplateBound = initEditor;
+
+			if (window.tinymce) {
+				initEditor();
+			} else {
+				document.addEventListener('DOMContentLoaded', initEditor);
+			}
+
+			// htmx swappt das Form mit `outerHTML` aus — Script-Tags im
+			// geswappten Content laufen in htmx 2 standardmäßig NICHT
+			// (allowScriptTags=false). Wir verlassen uns deshalb komplett auf
+			// die hier einmal an document.body gebundenen Listener.
+			//
+			// beforeCleanupElement: wird unmittelbar bevor htmx ein Element aus
+			//   dem DOM nimmt aufgerufen — perfekter Hook, um TinyMCE noch zu
+			//   entkoppeln, solange das alte textarea/iframe noch existiert.
+			// afterSettle: nach dem Swap UND nach allen Animationen — DOM ist
+			//   stabil, das neue textarea ist garantiert im Form.
+			document.body.addEventListener('htmx:beforeCleanupElement', function(evt) {
+				if (!window.tinymce) return;
+				const el = evt.detail && evt.detail.elt;
+				if (el && el.querySelector && el.querySelector('#template-editor')) {
+					window.tinymce.remove('#template-editor');
+				}
+			});
+			document.body.addEventListener('htmx:afterSettle', function() {
+				if (document.getElementById('template-editor')) initEditor();
+			});
+		})();
+	</script>
 }

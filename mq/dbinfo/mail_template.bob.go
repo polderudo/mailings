@@ -51,15 +51,6 @@ var MailTemplates = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		BodyDelta: column{
-			Name:      "body_delta",
-			DBType:    "text",
-			Default:   "''::text",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		CreatedByUserID: column{
 			Name:      "created_by_user_id",
 			DBType:    "integer",
@@ -167,7 +158,6 @@ type mailTemplateColumns struct {
 	Name            column
 	Subject         column
 	BodyHTML        column
-	BodyDelta       column
 	CreatedByUserID column
 	UpdatedByUserID column
 	CreatedAt       column
@@ -176,7 +166,7 @@ type mailTemplateColumns struct {
 
 func (c mailTemplateColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.Subject, c.BodyHTML, c.BodyDelta, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.Name, c.Subject, c.BodyHTML, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
 	}
 }
 

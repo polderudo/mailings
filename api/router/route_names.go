@@ -168,21 +168,23 @@ func init() { mustOK("Templates", EnsureAllFieldsSet(Templates)) }
 
 // Lists – Routen für das Email-Listen-Modul.
 var Lists = struct {
-	List   string
-	New    string
-	Detail string
-	Create string
-	Update string
-	Import string
-	Delete string
+	List            string
+	New             string
+	Detail          string
+	Create          string
+	Update          string
+	Import          string
+	Delete          string
+	DeleteRecipient string
 }{
-	List:   "lists_list",
-	New:    "lists_new",
-	Detail: "lists_detail",
-	Create: "lists_create",
-	Update: "lists_update",
-	Import: "lists_import",
-	Delete: "lists_delete",
+	List:            "lists_list",
+	New:             "lists_new",
+	Detail:          "lists_detail",
+	Create:          "lists_create",
+	Update:          "lists_update",
+	Import:          "lists_import",
+	Delete:          "lists_delete",
+	DeleteRecipient: "lists_delete_recipient",
 }
 
 func init() { mustOK("Lists", EnsureAllFieldsSet(Lists)) }

@@ -41,7 +41,6 @@ type MailTemplateTemplate struct {
 	Name            func() string
 	Subject         func() string
 	BodyHTML        func() string
-	BodyDelta       func() string
 	CreatedByUserID func() null.Val[int32]
 	UpdatedByUserID func() null.Val[int32]
 	CreatedAt       func() time.Time
@@ -129,10 +128,6 @@ func (o MailTemplateTemplate) BuildSetter() *models.MailTemplateSetter {
 		val := o.BodyHTML()
 		m.BodyHTML = omit.From(val)
 	}
-	if o.BodyDelta != nil {
-		val := o.BodyDelta()
-		m.BodyDelta = omit.From(val)
-	}
 	if o.CreatedByUserID != nil {
 		val := o.CreatedByUserID()
 		m.CreatedByUserID = omitnull.FromNull(val)
@@ -182,9 +177,6 @@ func (o MailTemplateTemplate) Build() *models.MailTemplate {
 	}
 	if o.BodyHTML != nil {
 		m.BodyHTML = o.BodyHTML()
-	}
-	if o.BodyDelta != nil {
-		m.BodyDelta = o.BodyDelta()
 	}
 	if o.CreatedByUserID != nil {
 		m.CreatedByUserID = o.CreatedByUserID()
@@ -403,7 +395,6 @@ func (m mailTemplateMods) RandomizeAllColumns(f *faker.Faker) MailTemplateMod {
 		MailTemplateMods.RandomName(f),
 		MailTemplateMods.RandomSubject(f),
 		MailTemplateMods.RandomBodyHTML(f),
-		MailTemplateMods.RandomBodyDelta(f),
 		MailTemplateMods.RandomCreatedByUserID(f),
 		MailTemplateMods.RandomUpdatedByUserID(f),
 		MailTemplateMods.RandomCreatedAt(f),
@@ -530,37 +521,6 @@ func (m mailTemplateMods) UnsetBodyHTML() MailTemplateMod {
 func (m mailTemplateMods) RandomBodyHTML(f *faker.Faker) MailTemplateMod {
 	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
 		o.BodyHTML = func() string {
-			return random_string(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m mailTemplateMods) BodyDelta(val string) MailTemplateMod {
-	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
-		o.BodyDelta = func() string { return val }
-	})
-}
-
-// Set the Column from the function
-func (m mailTemplateMods) BodyDeltaFunc(f func() string) MailTemplateMod {
-	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
-		o.BodyDelta = f
-	})
-}
-
-// Clear any values for the column
-func (m mailTemplateMods) UnsetBodyDelta() MailTemplateMod {
-	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
-		o.BodyDelta = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m mailTemplateMods) RandomBodyDelta(f *faker.Faker) MailTemplateMod {
-	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
-		o.BodyDelta = func() string {
 			return random_string(f)
 		}
 	})

@@ -35,7 +35,6 @@ type Mailing struct {
 	Status          string              `db:"status" json:"status"`
 	SubjectSnapshot string              `db:"subject_snapshot" json:"subject_snapshot"`
 	BodySnapshot    string              `db:"body_snapshot" json:"body_snapshot"`
-	TotalRecipients int32               `db:"total_recipients" json:"total_recipients"`
 	SentCount       int32               `db:"sent_count" json:"sent_count"`
 	FailedCount     int32               `db:"failed_count" json:"failed_count"`
 	StartedAt       null.Val[time.Time] `db:"started_at" json:"started_at"`
@@ -86,7 +85,7 @@ type mailingRLoaded struct {
 
 func buildMailingColumns(tableName string) mailingColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "total_recipients", "sent_count", "failed_count", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
+		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "sent_count", "failed_count", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
 	)
 
 	if tableName != "" {
@@ -104,7 +103,6 @@ func buildMailingColumns(tableName string) mailingColumns {
 		Status:          buildMailingColumn(tableName, "status"),
 		SubjectSnapshot: buildMailingColumn(tableName, "subject_snapshot"),
 		BodySnapshot:    buildMailingColumn(tableName, "body_snapshot"),
-		TotalRecipients: buildMailingColumn(tableName, "total_recipients"),
 		SentCount:       buildMailingColumn(tableName, "sent_count"),
 		FailedCount:     buildMailingColumn(tableName, "failed_count"),
 		StartedAt:       buildMailingColumn(tableName, "started_at"),
@@ -127,7 +125,6 @@ type mailingColumns struct {
 	Status          mailingColumn
 	SubjectSnapshot mailingColumn
 	BodySnapshot    mailingColumn
-	TotalRecipients mailingColumn
 	SentCount       mailingColumn
 	FailedCount     mailingColumn
 	StartedAt       mailingColumn
@@ -189,7 +186,6 @@ type MailingSetter struct {
 	Status          omit.Val[string]        `db:"status" json:"status"`
 	SubjectSnapshot omit.Val[string]        `db:"subject_snapshot" json:"subject_snapshot"`
 	BodySnapshot    omit.Val[string]        `db:"body_snapshot" json:"body_snapshot"`
-	TotalRecipients omit.Val[int32]         `db:"total_recipients" json:"total_recipients"`
 	SentCount       omit.Val[int32]         `db:"sent_count" json:"sent_count"`
 	FailedCount     omit.Val[int32]         `db:"failed_count" json:"failed_count"`
 	StartedAt       omitnull.Val[time.Time] `db:"started_at" json:"started_at"`
@@ -201,7 +197,7 @@ type MailingSetter struct {
 }
 
 func (s MailingSetter) SetColumns() []string {
-	vals := make([]string, 0, 17)
+	vals := make([]string, 0, 16)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -225,9 +221,6 @@ func (s MailingSetter) SetColumns() []string {
 	}
 	if s.BodySnapshot.IsValue() {
 		vals = append(vals, "body_snapshot")
-	}
-	if s.TotalRecipients.IsValue() {
-		vals = append(vals, "total_recipients")
 	}
 	if s.SentCount.IsValue() {
 		vals = append(vals, "sent_count")
@@ -281,9 +274,6 @@ func (s MailingSetter) Overwrite(t *Mailing) {
 	if s.BodySnapshot.IsValue() {
 		t.BodySnapshot = s.BodySnapshot.MustGet()
 	}
-	if s.TotalRecipients.IsValue() {
-		t.TotalRecipients = s.TotalRecipients.MustGet()
-	}
 	if s.SentCount.IsValue() {
 		t.SentCount = s.SentCount.MustGet()
 	}
@@ -316,7 +306,7 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 17)
+		vals := make([]bob.Expression, 16)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -365,58 +355,52 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.TotalRecipients.IsValue() {
-			vals[8] = psql.Arg(s.TotalRecipients.MustGet())
+		if s.SentCount.IsValue() {
+			vals[8] = psql.Arg(s.SentCount.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.SentCount.IsValue() {
-			vals[9] = psql.Arg(s.SentCount.MustGet())
+		if s.FailedCount.IsValue() {
+			vals[9] = psql.Arg(s.FailedCount.MustGet())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if s.FailedCount.IsValue() {
-			vals[10] = psql.Arg(s.FailedCount.MustGet())
+		if !s.StartedAt.IsUnset() {
+			vals[10] = psql.Arg(s.StartedAt.MustGetNull())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if !s.StartedAt.IsUnset() {
-			vals[11] = psql.Arg(s.StartedAt.MustGetNull())
+		if !s.FinishedAt.IsUnset() {
+			vals[11] = psql.Arg(s.FinishedAt.MustGetNull())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FinishedAt.IsUnset() {
-			vals[12] = psql.Arg(s.FinishedAt.MustGetNull())
+		if !s.CreatedByUserID.IsUnset() {
+			vals[12] = psql.Arg(s.CreatedByUserID.MustGetNull())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CreatedByUserID.IsUnset() {
-			vals[13] = psql.Arg(s.CreatedByUserID.MustGetNull())
+		if !s.UpdatedByUserID.IsUnset() {
+			vals[13] = psql.Arg(s.UpdatedByUserID.MustGetNull())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if !s.UpdatedByUserID.IsUnset() {
-			vals[14] = psql.Arg(s.UpdatedByUserID.MustGetNull())
+		if s.CreatedAt.IsValue() {
+			vals[14] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[15] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.UpdatedAt.IsUnset() {
+			vals[15] = psql.Arg(s.UpdatedAt.MustGetNull())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
-		}
-
-		if !s.UpdatedAt.IsUnset() {
-			vals[16] = psql.Arg(s.UpdatedAt.MustGetNull())
-		} else {
-			vals[16] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -428,7 +412,7 @@ func (s MailingSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 17)
+	exprs := make([]bob.Expression, 0, 16)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -483,13 +467,6 @@ func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "body_snapshot")...),
 			psql.Arg(s.BodySnapshot),
-		}})
-	}
-
-	if s.TotalRecipients.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "total_recipients")...),
-			psql.Arg(s.TotalRecipients),
 		}})
 	}
 
@@ -1251,7 +1228,6 @@ type mailingWhere[Q psql.Filterable] struct {
 	Status          psql.WhereMod[Q, string]
 	SubjectSnapshot psql.WhereMod[Q, string]
 	BodySnapshot    psql.WhereMod[Q, string]
-	TotalRecipients psql.WhereMod[Q, int32]
 	SentCount       psql.WhereMod[Q, int32]
 	FailedCount     psql.WhereMod[Q, int32]
 	StartedAt       psql.WhereNullMod[Q, time.Time]
@@ -1276,7 +1252,6 @@ func buildMailingWhere[Q psql.Filterable](cols mailingColumns) mailingWhere[Q] {
 		Status:          psql.Where[Q, string](cols.Status.Expression),
 		SubjectSnapshot: psql.Where[Q, string](cols.SubjectSnapshot.Expression),
 		BodySnapshot:    psql.Where[Q, string](cols.BodySnapshot.Expression),
-		TotalRecipients: psql.Where[Q, int32](cols.TotalRecipients.Expression),
 		SentCount:       psql.Where[Q, int32](cols.SentCount.Expression),
 		FailedCount:     psql.Where[Q, int32](cols.FailedCount.Expression),
 		StartedAt:       psql.WhereNull[Q, time.Time](cols.StartedAt.Expression),

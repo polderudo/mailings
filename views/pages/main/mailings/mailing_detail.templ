@@ -20,10 +20,11 @@ type MailingNewFormData struct {
 }
 
 type MailingDetailData struct {
-	Mailing      *mq.Mailing
-	TemplateName string
-	ListName     string
-	Domain       string
+	Mailing        *mq.Mailing
+	TemplateName   string
+	ListName       string
+	Domain         string
+	RecipientCount int64
 }
 
 templ MailingNew(user *mq.UserProfile, lang string, data MailingNewFormData) {
@@ -165,7 +166,7 @@ templ MailingInfo(lang string, data MailingDetailData) {
 					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.MailingStatus) }:</dt>
 					<dd class="font-medium">{ data.Mailing.Status }</dd>
 					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.TotalRecipients) }:</dt>
-					<dd>{ strconv.Itoa(int(data.Mailing.TotalRecipients)) }</dd>
+					<dd>{ strconv.FormatInt(data.RecipientCount, 10) }</dd>
 					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.SentCount) }:</dt>
 					<dd>{ strconv.Itoa(int(data.Mailing.SentCount)) }</dd>
 					<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.FailedCount) }:</dt>

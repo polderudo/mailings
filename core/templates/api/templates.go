@@ -4,6 +4,7 @@ import (
 	"app/api/router"
 	"app/db"
 	"app/i18n"
+	"app/mail/snippet"
 	"app/mq"
 	"app/mw"
 	"app/views"
@@ -49,7 +50,7 @@ func (m *api) TemplatesPage(c *mw.UserContext) error {
 }
 
 func (m *api) TemplateNewPage(c *mw.UserContext) error {
-	data := templatesview.TemplateFormData{IsNew: true}
+	data := templatesview.TemplateFormData{IsNew: true, Snippets: snippet.All()}
 	if isHXRequest(c) {
 		return views.Render(c, templatesview.TemplateDetailPage(c.Lang, data))
 	}
@@ -67,12 +68,12 @@ func (m *api) TemplateDetailPage(c *mw.UserContext) error {
 		return fmt.Errorf("template not found")
 	}
 	data := templatesview.TemplateFormData{
-		ID:        t.ID,
-		Name:      t.Name,
-		Subject:   t.Subject,
-		BodyHTML:  t.BodyHTML,
-		BodyDelta: t.BodyDelta,
-		IsNew:     false,
+		ID:       t.ID,
+		Name:     t.Name,
+		Subject:  t.Subject,
+		BodyHTML: t.BodyHTML,
+		IsNew:    false,
+		Snippets: snippet.All(),
 	}
 	if isHXRequest(c) {
 		return views.Render(c, templatesview.TemplateDetailPage(c.Lang, data))
@@ -90,14 +91,12 @@ func (m *api) TemplateCreate(c *mw.UserContext) error {
 	}
 	subject := c.FormValue("subject")
 	bodyHTML := c.FormValue("body_html")
-	bodyDelta := c.FormValue("body_delta")
 
 	ctx := context.Background()
 	created, err := mq.MailTemplates.Insert(&mq.MailTemplateSetter{
 		Name:            omit.From(name),
 		Subject:         omit.From(subject),
 		BodyHTML:        omit.From(bodyHTML),
-		BodyDelta:       omit.From(bodyDelta),
 		CreatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedAt:       omitnull.From(time.Now()),
@@ -128,13 +127,11 @@ func (m *api) TemplateUpdate(c *mw.UserContext) error {
 	}
 	subject := c.FormValue("subject")
 	bodyHTML := c.FormValue("body_html")
-	bodyDelta := c.FormValue("body_delta")
 
 	if err := t.Update(ctx, db.DBob, &mq.MailTemplateSetter{
 		Name:            omit.From(name),
 		Subject:         omit.From(subject),
 		BodyHTML:        omit.From(bodyHTML),
-		BodyDelta:       omit.From(bodyDelta),
 		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedAt:       omitnull.From(time.Now()),
 	}); err != nil {
@@ -142,12 +139,12 @@ func (m *api) TemplateUpdate(c *mw.UserContext) error {
 	}
 
 	data := templatesview.TemplateFormData{
-		ID:        t.ID,
-		Name:      t.Name,
-		Subject:   t.Subject,
-		BodyHTML:  t.BodyHTML,
-		BodyDelta: t.BodyDelta,
-		IsNew:     false,
+		ID:       t.ID,
+		Name:     t.Name,
+		Subject:  t.Subject,
+		BodyHTML: t.BodyHTML,
+		IsNew:    false,
+		Snippets: snippet.All(),
 	}
 	return views.RenderWithToast(c,
 		templatesview.TemplateForm(c.Lang, data),

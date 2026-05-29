@@ -208,6 +208,13 @@ const(
 	LK_delete_list
 	LK_delete_recipient
 	LK_search_list
+	LK_excel_header_columns_email_vorname_nachname
+	LK_could_not_read_excel_file
+	LK_import_failed
+	LK_remove_recipient
+	LK_this_will_permanently_remove_the_recip_k5lat5y3
+	LK_recipient_removed
+	LK_recipient_not_found
 	LK_mailings
 	LK_all_mailings
 	LK_new_mailing
@@ -267,6 +274,8 @@ const(
 	LK_template_saved
 	LK_template_name_is_required
 	LK_search_template
+	LK_insert_html_snippet
+	LK_no_snippets_available
 	LK_hello
 	LK_english
 	LK_german

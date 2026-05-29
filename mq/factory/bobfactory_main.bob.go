@@ -353,7 +353,6 @@ func (f *Factory) fromExistingMailTemplate(ctx context.Context, m *models.MailTe
 	o.Name = func() string { return m.Name }
 	o.Subject = func() string { return m.Subject }
 	o.BodyHTML = func() string { return m.BodyHTML }
-	o.BodyDelta = func() string { return m.BodyDelta }
 	o.CreatedByUserID = func() null.Val[int32] { return m.CreatedByUserID }
 	o.UpdatedByUserID = func() null.Val[int32] { return m.UpdatedByUserID }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
@@ -412,7 +411,6 @@ func (f *Factory) fromExistingMailing(ctx context.Context, m *models.Mailing) *M
 	o.Status = func() string { return m.Status }
 	o.SubjectSnapshot = func() string { return m.SubjectSnapshot }
 	o.BodySnapshot = func() string { return m.BodySnapshot }
-	o.TotalRecipients = func() int32 { return m.TotalRecipients }
 	o.SentCount = func() int32 { return m.SentCount }
 	o.FailedCount = func() int32 { return m.FailedCount }
 	o.StartedAt = func() null.Val[time.Time] { return m.StartedAt }

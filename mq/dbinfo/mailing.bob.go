@@ -87,15 +87,6 @@ var Mailings = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		TotalRecipients: column{
-			Name:      "total_recipients",
-			DBType:    "integer",
-			Default:   "0",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		SentCount: column{
 			Name:      "sent_count",
 			DBType:    "integer",
@@ -321,7 +312,6 @@ type mailingColumns struct {
 	Status          column
 	SubjectSnapshot column
 	BodySnapshot    column
-	TotalRecipients column
 	SentCount       column
 	FailedCount     column
 	StartedAt       column
@@ -334,7 +324,7 @@ type mailingColumns struct {
 
 func (c mailingColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.TotalRecipients, c.SentCount, c.FailedCount, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.SentCount, c.FailedCount, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
 	}
 }
 

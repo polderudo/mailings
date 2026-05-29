@@ -217,6 +217,13 @@ var L = struct {
 		DeleteList int
 		DeleteRecipient int
 		SearchList int
+		ExcelHeaderColumnsEmailVornameNachname int
+		CouldNotReadExcelFile int
+		ImportFailed int
+		RemoveRecipient int
+		ThisWillPermanentlyRemoveTheRecipK5lat5y3 int
+		RecipientRemoved int
+		RecipientNotFound int
 	}
 	Mailings struct {
 		Mailings int
@@ -282,6 +289,8 @@ var L = struct {
 		TemplateSaved int
 		TemplateNameIsRequired int
 		SearchTemplate int
+		InsertHtmlSnippet int
+		NoSnippetsAvailable int
 	}
 	Ui struct {
 		Hello int
@@ -771,6 +780,13 @@ var L = struct {
 		DeleteList int
 		DeleteRecipient int
 		SearchList int
+		ExcelHeaderColumnsEmailVornameNachname int
+		CouldNotReadExcelFile int
+		ImportFailed int
+		RemoveRecipient int
+		ThisWillPermanentlyRemoveTheRecipK5lat5y3 int
+		RecipientRemoved int
+		RecipientNotFound int
 	}{
 		EmailLists: LK_email_lists,
 		AllEmailLists: LK_all_email_lists,
@@ -792,6 +808,13 @@ var L = struct {
 		DeleteList: LK_delete_list,
 		DeleteRecipient: LK_delete_recipient,
 		SearchList: LK_search_list,
+		ExcelHeaderColumnsEmailVornameNachname: LK_excel_header_columns_email_vorname_nachname,
+		CouldNotReadExcelFile: LK_could_not_read_excel_file,
+		ImportFailed: LK_import_failed,
+		RemoveRecipient: LK_remove_recipient,
+		ThisWillPermanentlyRemoveTheRecipK5lat5y3: LK_this_will_permanently_remove_the_recip_k5lat5y3,
+		RecipientRemoved: LK_recipient_removed,
+		RecipientNotFound: LK_recipient_not_found,
 	},
 	Mailings: struct {
 		Mailings int
@@ -905,6 +928,8 @@ var L = struct {
 		TemplateSaved int
 		TemplateNameIsRequired int
 		SearchTemplate int
+		InsertHtmlSnippet int
+		NoSnippetsAvailable int
 	}{
 		Templates: LK_templates,
 		AllTemplates: LK_all_templates,
@@ -919,6 +944,8 @@ var L = struct {
 		TemplateSaved: LK_template_saved,
 		TemplateNameIsRequired: LK_template_name_is_required,
 		SearchTemplate: LK_search_template,
+		InsertHtmlSnippet: LK_insert_html_snippet,
+		NoSnippetsAvailable: LK_no_snippets_available,
 	},
 	Ui: struct {
 		Hello int

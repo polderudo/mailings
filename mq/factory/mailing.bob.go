@@ -45,7 +45,6 @@ type MailingTemplate struct {
 	Status          func() string
 	SubjectSnapshot func() string
 	BodySnapshot    func() string
-	TotalRecipients func() int32
 	SentCount       func() int32
 	FailedCount     func() int32
 	StartedAt       func() null.Val[time.Time]
@@ -186,10 +185,6 @@ func (o MailingTemplate) BuildSetter() *models.MailingSetter {
 		val := o.BodySnapshot()
 		m.BodySnapshot = omit.From(val)
 	}
-	if o.TotalRecipients != nil {
-		val := o.TotalRecipients()
-		m.TotalRecipients = omit.From(val)
-	}
 	if o.SentCount != nil {
 		val := o.SentCount()
 		m.SentCount = omit.From(val)
@@ -267,9 +262,6 @@ func (o MailingTemplate) Build() *models.Mailing {
 	}
 	if o.BodySnapshot != nil {
 		m.BodySnapshot = o.BodySnapshot()
-	}
-	if o.TotalRecipients != nil {
-		m.TotalRecipients = o.TotalRecipients()
 	}
 	if o.SentCount != nil {
 		m.SentCount = o.SentCount()
@@ -604,7 +596,6 @@ func (m mailingMods) RandomizeAllColumns(f *faker.Faker) MailingMod {
 		MailingMods.RandomStatus(f),
 		MailingMods.RandomSubjectSnapshot(f),
 		MailingMods.RandomBodySnapshot(f),
-		MailingMods.RandomTotalRecipients(f),
 		MailingMods.RandomSentCount(f),
 		MailingMods.RandomFailedCount(f),
 		MailingMods.RandomStartedAt(f),
@@ -860,37 +851,6 @@ func (m mailingMods) RandomBodySnapshot(f *faker.Faker) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
 		o.BodySnapshot = func() string {
 			return random_string(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m mailingMods) TotalRecipients(val int32) MailingMod {
-	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.TotalRecipients = func() int32 { return val }
-	})
-}
-
-// Set the Column from the function
-func (m mailingMods) TotalRecipientsFunc(f func() int32) MailingMod {
-	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.TotalRecipients = f
-	})
-}
-
-// Clear any values for the column
-func (m mailingMods) UnsetTotalRecipients() MailingMod {
-	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.TotalRecipients = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m mailingMods) RandomTotalRecipients(f *faker.Faker) MailingMod {
-	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.TotalRecipients = func() int32 {
-			return random_int32(f)
 		}
 	})
 }

@@ -6,7 +6,6 @@ create table mail_template
     name          varchar(256) NOT NULL,
     subject       varchar(500) NOT NULL DEFAULT '',
     body_html     text NOT NULL DEFAULT '',
-    body_delta    text NOT NULL DEFAULT '',
 
     created_by_user_id  integer NULL REFERENCES user_profile(id),
     updated_by_user_id  integer NULL REFERENCES user_profile(id),
@@ -59,7 +58,9 @@ create table mailing
     subject_snapshot    varchar(500) NOT NULL DEFAULT '',
     body_snapshot       text NOT NULL DEFAULT '',
 
-    total_recipients    integer NOT NULL DEFAULT 0,
+    -- total_recipients gibt es bewusst nicht: die verknüpfte mail_list darf
+    -- sich nach Anlegen des Mailings noch ändern, daher wird die Anzahl der
+    -- Empfänger immer live aus mail_list_recipient ermittelt.
     sent_count          integer NOT NULL DEFAULT 0,
     failed_count        integer NOT NULL DEFAULT 0,
 

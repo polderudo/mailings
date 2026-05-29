@@ -31,7 +31,6 @@ type MailTemplate struct {
 	Name            string              `db:"name" json:"name"`
 	Subject         string              `db:"subject" json:"subject"`
 	BodyHTML        string              `db:"body_html" json:"body_html"`
-	BodyDelta       string              `db:"body_delta" json:"body_delta"`
 	CreatedByUserID null.Val[int32]     `db:"created_by_user_id" json:"created_by_user_id"`
 	UpdatedByUserID null.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
 	CreatedAt       time.Time           `db:"created_at" json:"created_at"`
@@ -72,7 +71,7 @@ type mailTemplateRLoaded struct {
 
 func buildMailTemplateColumns(tableName string) mailTemplateColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "name", "subject", "body_html", "body_delta", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
+		"id", "name", "subject", "body_html", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
 	)
 
 	if tableName != "" {
@@ -86,7 +85,6 @@ func buildMailTemplateColumns(tableName string) mailTemplateColumns {
 		Name:            buildMailTemplateColumn(tableName, "name"),
 		Subject:         buildMailTemplateColumn(tableName, "subject"),
 		BodyHTML:        buildMailTemplateColumn(tableName, "body_html"),
-		BodyDelta:       buildMailTemplateColumn(tableName, "body_delta"),
 		CreatedByUserID: buildMailTemplateColumn(tableName, "created_by_user_id"),
 		UpdatedByUserID: buildMailTemplateColumn(tableName, "updated_by_user_id"),
 		CreatedAt:       buildMailTemplateColumn(tableName, "created_at"),
@@ -101,7 +99,6 @@ type mailTemplateColumns struct {
 	Name            mailTemplateColumn
 	Subject         mailTemplateColumn
 	BodyHTML        mailTemplateColumn
-	BodyDelta       mailTemplateColumn
 	CreatedByUserID mailTemplateColumn
 	UpdatedByUserID mailTemplateColumn
 	CreatedAt       mailTemplateColumn
@@ -155,7 +152,6 @@ type MailTemplateSetter struct {
 	Name            omit.Val[string]        `db:"name" json:"name"`
 	Subject         omit.Val[string]        `db:"subject" json:"subject"`
 	BodyHTML        omit.Val[string]        `db:"body_html" json:"body_html"`
-	BodyDelta       omit.Val[string]        `db:"body_delta" json:"body_delta"`
 	CreatedByUserID omitnull.Val[int32]     `db:"created_by_user_id" json:"created_by_user_id"`
 	UpdatedByUserID omitnull.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
 	CreatedAt       omit.Val[time.Time]     `db:"created_at" json:"created_at"`
@@ -163,7 +159,7 @@ type MailTemplateSetter struct {
 }
 
 func (s MailTemplateSetter) SetColumns() []string {
-	vals := make([]string, 0, 9)
+	vals := make([]string, 0, 8)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -175,9 +171,6 @@ func (s MailTemplateSetter) SetColumns() []string {
 	}
 	if s.BodyHTML.IsValue() {
 		vals = append(vals, "body_html")
-	}
-	if s.BodyDelta.IsValue() {
-		vals = append(vals, "body_delta")
 	}
 	if !s.CreatedByUserID.IsUnset() {
 		vals = append(vals, "created_by_user_id")
@@ -207,9 +200,6 @@ func (s MailTemplateSetter) Overwrite(t *MailTemplate) {
 	if s.BodyHTML.IsValue() {
 		t.BodyHTML = s.BodyHTML.MustGet()
 	}
-	if s.BodyDelta.IsValue() {
-		t.BodyDelta = s.BodyDelta.MustGet()
-	}
 	if !s.CreatedByUserID.IsUnset() {
 		t.CreatedByUserID = s.CreatedByUserID.MustGetNull()
 	}
@@ -230,7 +220,7 @@ func (s *MailTemplateSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 9)
+		vals := make([]bob.Expression, 8)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -255,34 +245,28 @@ func (s *MailTemplateSetter) Apply(q *dialect.InsertQuery) {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.BodyDelta.IsValue() {
-			vals[4] = psql.Arg(s.BodyDelta.MustGet())
+		if !s.CreatedByUserID.IsUnset() {
+			vals[4] = psql.Arg(s.CreatedByUserID.MustGetNull())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CreatedByUserID.IsUnset() {
-			vals[5] = psql.Arg(s.CreatedByUserID.MustGetNull())
+		if !s.UpdatedByUserID.IsUnset() {
+			vals[5] = psql.Arg(s.UpdatedByUserID.MustGetNull())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if !s.UpdatedByUserID.IsUnset() {
-			vals[6] = psql.Arg(s.UpdatedByUserID.MustGetNull())
+		if s.CreatedAt.IsValue() {
+			vals[6] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[7] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.UpdatedAt.IsUnset() {
+			vals[7] = psql.Arg(s.UpdatedAt.MustGetNull())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
-		}
-
-		if !s.UpdatedAt.IsUnset() {
-			vals[8] = psql.Arg(s.UpdatedAt.MustGetNull())
-		} else {
-			vals[8] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -294,7 +278,7 @@ func (s MailTemplateSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s MailTemplateSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 9)
+	exprs := make([]bob.Expression, 0, 8)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -321,13 +305,6 @@ func (s MailTemplateSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "body_html")...),
 			psql.Arg(s.BodyHTML),
-		}})
-	}
-
-	if s.BodyDelta.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "body_delta")...),
-			psql.Arg(s.BodyDelta),
 		}})
 	}
 
@@ -847,7 +824,6 @@ type mailTemplateWhere[Q psql.Filterable] struct {
 	Name            psql.WhereMod[Q, string]
 	Subject         psql.WhereMod[Q, string]
 	BodyHTML        psql.WhereMod[Q, string]
-	BodyDelta       psql.WhereMod[Q, string]
 	CreatedByUserID psql.WhereNullMod[Q, int32]
 	UpdatedByUserID psql.WhereNullMod[Q, int32]
 	CreatedAt       psql.WhereMod[Q, time.Time]
@@ -864,7 +840,6 @@ func buildMailTemplateWhere[Q psql.Filterable](cols mailTemplateColumns) mailTem
 		Name:            psql.Where[Q, string](cols.Name.Expression),
 		Subject:         psql.Where[Q, string](cols.Subject.Expression),
 		BodyHTML:        psql.Where[Q, string](cols.BodyHTML.Expression),
-		BodyDelta:       psql.Where[Q, string](cols.BodyDelta.Expression),
 		CreatedByUserID: psql.WhereNull[Q, int32](cols.CreatedByUserID.Expression),
 		UpdatedByUserID: psql.WhereNull[Q, int32](cols.UpdatedByUserID.Expression),
 		CreatedAt:       psql.Where[Q, time.Time](cols.CreatedAt.Expression),

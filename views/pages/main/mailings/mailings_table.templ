@@ -44,6 +44,7 @@ func CurrentMailingsTableProps(lang string, rows []appdb.MailingTableRow, reques
 			{AccessorKey: "listName", Header: TrLang(lang, L.Mailings.EmailList), MinWidth: "12rem"},
 			{AccessorKey: "domain", Header: TrLang(lang, L.Mailings.Domain), MinWidth: "10rem"},
 			{AccessorKey: "status", Header: TrLang(lang, L.Mailings.MailingStatus), Width: "8rem", MinWidth: "8rem", Sortable: true},
+			{AccessorKey: "recipientCount", Header: TrLang(lang, L.Mailings.TotalRecipients), Width: "8rem", MinWidth: "8rem"},
 			{AccessorKey: "sentCount", Header: TrLang(lang, L.Mailings.SentCount), Width: "6rem", MinWidth: "6rem"},
 		},
 		Data:         rows,

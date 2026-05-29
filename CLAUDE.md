@@ -12,7 +12,7 @@ Newsletter- und Mailing-Anwendung. Basiert auf der vkb-vipsstar Architektur.
 - **DB ORM**: bob (stephenafamo/bob, PostgreSQL via pgx)
 - **Authorization**: casbin (RbacModelV2) + casbin sql-adapter
 - **Mail**: polderudo/mailyak (Transaktionsmails) + Postmark Broadcasts (Newsletter)
-- **WYSIWYG-Editor**: Quill v2 (eingebunden in Mailing-Template-Editor)
+- **WYSIWYG-Editor**: TinyMCE 7 Community (self-hosted unter `assets/tinymce/`)
 - **i18n**: eigenes typed system (siehe i18n/)
 - **Migrationen**: goose (eingebettete SQL)
 - **CLI**: cobra
@@ -132,26 +132,27 @@ dort hinzufügen, neue Operations in `auth/operations.go`.
 
 Kern-Feature dieser Anwendung. Workflow:
 
-1. **Template** anlegen / editieren (HTML mit Quill Editor)
+1. **Template** anlegen / editieren (HTML mit TinyMCE 7 Editor)
 2. **Email-Liste** importieren und benennen
 3. **Mailing-Vorgang** erstellen (Template + Liste + Domain wählen)
 4. **Versand** starten — geht in Postmark Broadcast-Stream
 
 ### Tabellen (Migration 00002)
 
-- `mail_template`        — benannte HTML-Templates, von Quill befüllt
-  - `id`, `name`, `subject`, `body_html`, `body_delta` (Quill Delta JSON für Re-Edit),
-    `created_by`, `created_at`, `updated_at`
+- `mail_template`        — benannte HTML-Templates, im TinyMCE-Editor gepflegt
+  - `id`, `name`, `subject`, `body_html`, `created_by`, `created_at`, `updated_at`
 - `mail_list`            — benannte Empfänger-Gruppen
   - `id`, `name`, `description`, `created_by`, `created_at`, `updated_at`
 - `mail_domain`          — feste Liste der versendbaren Absender-Domains
   - `id`, `domain`, `from_email`, `from_name`, `postmark_stream_id`, `is_active`,
     `created_at`, `updated_at`
 - `mailing`              — ein Versand-Vorgang. Empfänger werden NICHT kopiert,
-  sondern direkt über `list_id → mail_list_recipient` gelesen.
+  sondern direkt über `list_id → mail_list_recipient` gelesen. Die Empfänger-
+  Anzahl steht **nicht** auf `mailing` (die Liste darf nach Anlegen weiter
+  editiert werden); sie wird live über `listsapi.CountListRecipients` gezählt.
   - `id`, `name`, `template_id`, `list_id`, `domain_id`, `status`
     (`draft`, `queued`, `sending`, `done`, `failed`), `subject_snapshot`,
-    `body_snapshot`, `started_at`, `finished_at`, `total_recipients`,
+    `body_snapshot`, `started_at`, `finished_at`,
     `sent_count`, `failed_count`, `created_by`, `created_at`, `updated_at`
 - `mail_list_recipient`  — einzelne Adressen pro Liste, inkl. letztem Versand-Status
   - Stammdaten: `id`, `list_id` (FK → `mail_list`, ON DELETE CASCADE), `email`,
@@ -161,11 +162,46 @@ Kern-Feature dieser Anwendung. Workflow:
     `last_error`, `last_sent_at`, `last_mailing_id` (FK → `mailing`, ON DELETE SET NULL)
   - UNIQUE (list_id, lower(email))
 
-### Quill Editor
+### TinyMCE Editor (self-hosted)
 
-- JS/CSS in `assets/js/quill.js` und `assets/css/quill.snow.css` (CDN-Drop oder lokal)
-- Template-Editor-Page: hidden Inputs für `body_html` und `body_delta`
-- Beim Submit: per Alpine/hyperscript Inhalt aus Quill in die hidden Inputs synchronisieren
+- TinyMCE 7 Community liegt unter `assets/tinymce/` (GPL 2.0+). Bestandteile:
+  `tinymce.min.js`, `models/`, `themes/`, `skins/`, `plugins/`, `icons/`,
+  `langs/de.js`. Wird unter `/static/tinymce/...` ausgeliefert.
+- Init im Template-Editor-Templ (`tinymceInitScript`): `selector: '#template-editor'`,
+  `base_url: '/static/tinymce'`, `suffix: '.min'`, `language: 'de'`,
+  `license_key: 'gpl'` (GPL-Akzeptanz). Plugins:
+  `lists link image table code autolink searchreplace fullscreen`.
+- **Bilder werden inline als `data:image/...;base64,...`** in `body_html`
+  gespeichert (keine externen URLs, damit der spätere Versand alles enthält,
+  was die Empfänger zum Anzeigen brauchen). Drei Wege landen auf demselben
+  Ergebnis:
+  1. Drag&Drop / Image-Dialog → `images_upload_handler` macht via FileReader
+     eine data-URL daraus.
+  2. Paste aus Zwischenablage → `paste_data_images: true`.
+  3. „Datei auswählen" im Image-Dialog → `file_picker_callback`.
+  Hinweis: einige E-Mail-Clients (z. B. ältere Outlook-Versionen) zeigen
+  base64-Bilder nicht zuverlässig; das ist eine bewusste Trade-off-Entscheidung
+  zugunsten Autarkie der versendeten Mail.
+- Submit-Sync: das Form trägt `hx-on::config-request="window.tmceSyncForm(this)"`
+  und schreibt vor jedem htmx-POST `editor.getContent()` in das hidden Input
+  `#template-body-html`.
+- HTMX-Lifecycle: `htmx:beforeSwap` ruft `tinymce.remove('#template-editor')`,
+  `htmx:afterSwap` re-initialisiert den Editor auf dem neu gerenderten Form.
+- Lizenzhinweis: `assets/tinymce/license.md` — GPL v2 oder höher.
+
+### HTML-Snippets (`mail/snippet`) — TinyMCE-Toolbar-Menu
+
+Vordefinierte HTML-Bausteine, die im Editor per Toolbar-Menü an die aktuelle
+Cursor-Position eingefügt werden.
+
+- Definition in `mail/snippet/snippet.go` als `[]Snippet{ID, Name, HTML}`.
+- `core/templates/api` reicht `snippet.All()` über `TemplateFormData.Snippets`
+  in die Detail-View.
+- View rendert die Liste als JSON in `<script id="template-snippets-data" type="application/json">`.
+- TinyMCE-Setup registriert via `editor.ui.registry.addMenuButton('snippets', { … })`
+  ein Dropdown in der Toolbar; jeder Klick auf einen Eintrag ruft
+  `editor.insertContent(s.html)` — das ist Quill-frei und ohne die früheren
+  Selection-/DOM-Crashes.
 
 ### Postmark Broadcasts
 
@@ -185,7 +221,7 @@ Alle Handler und Routen liegen unter `core/` und sind **vollständig** über
 | Pfad | Methode | Zweck |
 |------|---------|-------|
 | `/a/templates/` | GET | Liste aller Templates |
-| `/a/templates/new/` | GET | Neues Template anlegen (Quill) |
+| `/a/templates/new/` | GET | Neues Template anlegen (TinyMCE) |
 | `/a/templates/:id/` | GET | Editor für vorhandenes Template |
 | `/a/templates/` | POST | Template anlegen |
 | `/a/templates/:id/` | POST | Template aktualisieren |
@@ -264,6 +300,72 @@ Hardcodierte URL-Strings (`/a/templates/`, `"/auth/login/"`,
 ### Sidebar
 Eintrag "Mailings" mit Untermenüpunkten Templates, Listen, Domains, Mailings.
 Liegt in `views/layout/components/sidebar.templ`.
+
+## Excel-Import (`nakami-lounge-GmbH/tools/importer`)
+
+Für Datei-Uploads, die in der Anwendung als Excel verarbeitet werden, nutzen wir
+`importer.NewExcelLineImporter` aus dem Paket
+`github.com/nakami-lounge-GmbH/tools/importer`. Das aktuelle Beispiel ist der
+Empfänger-Import in `core/lists/api/lists.go`.
+
+### Schema
+
+Pro Import-Format eine Row-Struktur mit `header:"..."`-Tags, die exakt den
+Spaltenüberschriften in der Excel-Datei entsprechen (case-insensitiv,
+getrimmt). Optional Validator-Tags (`validate:"required,email"` etc.).
+
+```go
+type excelRecipientRow struct {
+    Email    string `header:"Email" validate:"required,email"`
+    Forename string `header:"Forename"`
+    Lastname string `header:"Lastname"`
+}
+```
+
+### Aufruf
+
+```go
+fh, _ := c.FormFile("file")
+f, _ := fh.Open(); defer f.Close()
+bytes, _ := io.ReadAll(f)
+
+eL := &importer.ErrorList{}
+imp, err := importer.NewExcelLineImporter[excelRecipientRow](&importer.ExcelLineConfig{
+    Config: importer.Config{
+        SheetNumber: 1,   // 1-basiert; alternativ SheetName
+        OffsetRow:   1,   // Zeile mit Headern (1-basiert), Daten ab darauf folgender Zeile
+        FileBytes:   bytes,
+    },
+}, eL)
+if err != nil || eL.HasErrors() { ... }
+
+for _, row := range imp.Data { ... }
+```
+
+### Upload-Komponente
+
+Für den Frontend-Upload nutzen wir die wiederverwendbare Dropzone aus
+`ui-components/dropzone`:
+
+```templ
+@uidropzone.Dropzone(uidropzone.Props{
+    Name:              "file",
+    AllowedExtensions: []string{"xlsx"},
+    MaxSizeBytes:      10 * 1024 * 1024,
+    Description:       Trl(ctx, L.Lists.ExcelHeaderColumnsEmailForenameLastname),
+    Required:          true,
+})
+```
+
+Die Dropzone rendert keine eigene `<form>` — sie wird in eine umschließende
+Form mit `enctype="multipart/form-data"` (und `hx-encoding="multipart/form-data"`
+falls HTMX-getrieben) eingesetzt. Drag-and-Drop sowie clientseitige
+Format-/Größenprüfung sind über Alpine integriert; eigene Fehlertexte können
+per Props oder über `dropzone.LangMap` lokalisiert werden.
+
+> `ui-components/avatar/dropdzone.templ` ist die ältere, avatar-spezifische
+> Variante mit Bild-Preview. Sie soll perspektivisch durch die neue
+> `dropzone`-Komponente abgelöst werden.
 
 ## gograph MCP Server
 

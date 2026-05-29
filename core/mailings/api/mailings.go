@@ -114,6 +114,12 @@ func loadMailingDetail(ctx context.Context, mailing *mq.Mailing) (mailingsview.M
 	if d, err := mq.FindMailDomain(ctx, db.DBob, mailing.DomainID); err == nil && d != nil {
 		data.Domain = d.Domain
 	}
+	// Recipient-Count wird immer live aus mail_list_recipient ermittelt — die
+	// Liste darf sich nach Anlegen des Mailings noch ändern, daher steht die
+	// Zahl nicht auf der mailing-Tabelle.
+	if cnt, err := listsapi.CountListRecipients(ctx, mailing.ListID); err == nil {
+		data.RecipientCount = cnt
+	}
 	return data, nil
 }
 
@@ -138,11 +144,6 @@ func (m *api) MailingCreate(c *mw.UserContext) error {
 		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), "Template not found")
 	}
 
-	recipientCount, err := listsapi.CountListRecipients(ctx, int32(listID))
-	if err != nil {
-		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
-	}
-
 	created, err := mq.Mailings.Insert(&mq.MailingSetter{
 		Name:            omit.From(name),
 		TemplateID:      omit.From(int32(templateID)),
@@ -151,7 +152,6 @@ func (m *api) MailingCreate(c *mw.UserContext) error {
 		Status:          omit.From("draft"),
 		SubjectSnapshot: omit.From(tpl.Subject),
 		BodySnapshot:    omit.From(tpl.BodyHTML),
-		TotalRecipients: omit.From(int32(recipientCount)),
 		CreatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedAt:       omitnull.From(time.Now()),

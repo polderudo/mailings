@@ -10,16 +10,27 @@ import (
 	listsview "app/views/pages/main/lists"
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/nakami-lounge-GmbH/tools/importer"
 	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
+
+// excelRecipientRow ist das Importer-Schema für eine Zeile Empfänger.
+// Die `header`-Tags müssen mit den Excel-Spaltenüberschriften übereinstimmen
+// (Case-insensitiv, getrimmt).
+type excelRecipientRow struct {
+	Email    string `header:"Email" validate:"required,email"`
+	Forename string `header:"Vorname"`
+	Lastname string `header:"Nachname"`
+}
 
 func (m *api) ListsPage(c *mw.UserContext) error {
 	request := globaltable.ReadRequest(c.Request(), listsview.CurrentListsTableID)
@@ -90,8 +101,10 @@ func LoadListRecipients(ctx context.Context, listID int32) ([]*mq.MailListRecipi
 	).All(ctx, db.DBob)
 }
 
-// CountListRecipients zählt die Empfänger einer Liste. Wird beim Anlegen eines
-// Mailings benutzt, um total_recipients zu setzen.
+// CountListRecipients zählt die Empfänger einer Liste. Wird auf der
+// Mailing-Detailseite und in der Mailings-Tabelle aufgerufen, da die Liste
+// nach Anlegen des Mailings weiter editiert werden darf — die Zahl wird also
+// nicht auf der mailing-Tabelle persistiert.
 func CountListRecipients(ctx context.Context, listID int32) (int64, error) {
 	return mq.MailListRecipients.Query(
 		sm.Where(mq.MailListRecipients.Columns.ListID.EQ(psql.Arg(listID))),
@@ -173,38 +186,65 @@ func (m *api) ListImport(c *mw.UserContext) error {
 	if err != nil || l == nil {
 		return fmt.Errorf("list not found")
 	}
-	raw := c.FormValue("recipients")
-	added := 0
-	for _, line := range strings.Split(raw, "\n") {
-		line = strings.TrimSpace(strings.TrimRight(line, "\r"))
-		if line == "" {
-			continue
+
+	fh, err := c.FormFile("file")
+	if err != nil {
+		return views.ToastError(c,
+			i18n.TrLang(c.Lang, i18n.L.Ui.Error),
+			i18n.TrLang(c.Lang, i18n.L.Lists.CouldNotReadExcelFile),
+		)
+	}
+	f, err := fh.Open()
+	if err != nil {
+		return views.ToastError(c,
+			i18n.TrLang(c.Lang, i18n.L.Ui.Error),
+			i18n.TrLang(c.Lang, i18n.L.Lists.CouldNotReadExcelFile),
+		)
+	}
+	defer f.Close()
+	bytes, err := io.ReadAll(f)
+	if err != nil {
+		return views.ToastError(c,
+			i18n.TrLang(c.Lang, i18n.L.Ui.Error),
+			i18n.TrLang(c.Lang, i18n.L.Lists.CouldNotReadExcelFile),
+		)
+	}
+
+	eL := &importer.ErrorList{}
+	imp, err := importer.NewExcelLineImporter[excelRecipientRow](&importer.ExcelLineConfig{
+		Config: importer.Config{
+			SheetNumber: 1,
+			OffsetRow:   1,
+			FileBytes:   bytes,
+		},
+	}, eL)
+	if err != nil || eL.HasErrors() {
+		msg := i18n.TrLang(c.Lang, i18n.L.Lists.ImportFailed)
+		if eL.HasErrors() {
+			msg = msg + ": " + eL.Errors[0].Message
+		} else if err != nil {
+			msg = msg + ": " + err.Error()
 		}
-		parts := strings.FieldsFunc(line, func(r rune) bool {
-			return r == ';' || r == ',' || r == '\t'
-		})
-		email := strings.TrimSpace(parts[0])
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), msg)
+	}
+
+	added := 0
+	for _, row := range imp.Data {
+		email := strings.TrimSpace(row.Email)
 		if email == "" || !strings.Contains(email, "@") {
 			continue
 		}
-		forename := ""
-		lastname := ""
-		if len(parts) > 1 {
-			forename = strings.TrimSpace(parts[1])
-		}
-		if len(parts) > 2 {
-			lastname = strings.TrimSpace(parts[2])
-		}
-		_, err := mq.MailListRecipients.Insert(&mq.MailListRecipientSetter{
+		_, insErr := mq.MailListRecipients.Insert(&mq.MailListRecipientSetter{
 			ListID:   omit.From(l.ID),
 			Email:    omit.From(email),
-			Forename: omit.From(forename),
-			Lastname: omit.From(lastname),
+			Forename: omit.From(strings.TrimSpace(row.Forename)),
+			Lastname: omit.From(strings.TrimSpace(row.Lastname)),
 		}).One(ctx, db.DBob)
-		if err == nil {
+		if insErr == nil {
 			added++
 		}
 	}
+
 	recipients, err := LoadListRecipients(ctx, l.ID)
 	if err != nil {
 		return err
@@ -251,4 +291,47 @@ func (m *api) ListDelete(c *mw.UserContext) error {
 	}
 	c.Response().Header().Set("HX-Redirect", router.Reverse(router.Lists.List))
 	return c.NoContent(200)
+}
+
+// ListRecipientDelete entfernt einen einzelnen Empfänger aus einer Liste.
+// Re-rendert das ListRecipientsPanel mit dem aktualisierten Stand.
+func (m *api) ListRecipientDelete(c *mw.UserContext) error {
+	listID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid list id: %w", err)
+	}
+	recID, err := strconv.Atoi(c.Param("rec_id"))
+	if err != nil {
+		return fmt.Errorf("invalid recipient id: %w", err)
+	}
+	ctx := context.Background()
+	l, err := mq.FindMailList(ctx, db.DBob, int32(listID))
+	if err != nil || l == nil {
+		return fmt.Errorf("list not found")
+	}
+	r, err := mq.FindMailListRecipient(ctx, db.DBob, int32(recID))
+	if err != nil || r == nil || r.ListID != l.ID {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), i18n.TrLang(c.Lang, i18n.L.Lists.RecipientNotFound))
+	}
+	if err := r.Delete(ctx, db.DBob); err != nil {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
+	}
+
+	recipients, err := LoadListRecipients(ctx, l.ID)
+	if err != nil {
+		return err
+	}
+	data := listsview.ListFormData{
+		ID:          l.ID,
+		Name:        l.Name,
+		Description: l.Description,
+		Recipients:  recipients,
+		IsNew:       false,
+	}
+	return views.RenderWithToast(c,
+		listsview.ListRecipientsPanel(c.Lang, data),
+		"success",
+		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
+		i18n.TrLang(c.Lang, i18n.L.Lists.RecipientRemoved),
+	)
 }
