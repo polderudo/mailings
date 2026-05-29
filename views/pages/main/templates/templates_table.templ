@@ -2,52 +2,59 @@ package templatesview
 
 import (
 	"app/api/router"
-	appdb "app/db"
+	"app/mq"
 	. "app/i18n"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"context"
+	"strconv"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	"github.com/templui/templui/components/table"
 )
 
-const CurrentTemplatesTableID = "templates-table"
-
-func normalizeTemplatesTableRequest(request globaltable.Request) globaltable.Request {
-	if request.FilterCriteria == nil {
-		request.FilterCriteria = map[string]string{}
+// templateUpdatedDisplay formattiert den effektiven Update-Zeitstempel.
+// Fällt auf created_at zurück, wenn updated_at nie gesetzt wurde.
+func templateUpdatedDisplay(t *mq.MailTemplate) string {
+	ts := t.CreatedAt
+	if ua, ok := t.UpdatedAt.Get(); ok {
+		ts = ua
 	}
-	if request.Pagination.Page < 1 {
-		request.Pagination.Page = 1
-	}
-	if request.Pagination.Count <= 0 {
-		request.Pagination.Count = 50
-	}
-	if len(request.Pagination.Sorts) == 0 {
-		request.Pagination.Sorts = []globaltable.SortParam{{Field: "name", IsDesc: false}}
-	}
-	return request
+	return ts.Format("2006-01-02 15:04")
 }
 
-func CurrentTemplatesTableProps(lang string, rows []appdb.MailTemplateTableRow, request globaltable.Request, total int64) globaltable.TableProps {
-	return globaltable.TableProps{
-		Lang:                NormalizeLang(lang),
-		ID:                  CurrentTemplatesTableID,
-		Class:               "mt-6",
-		Endpoint:            router.Reverse(router.Templates.List),
-		Request:             normalizeTemplatesTableRequest(request),
-		Total:               total,
-		Title:               TrLang(lang, L.Templates.AllTemplates),
-		RowClickAccessorKey: "id",
-		RowClickURLPattern:  router.Reverse(router.Templates.Detail, "{value}"),
-		PageSizes:           []int{10, 25, 50, 100},
-		Columns: []globaltable.Column{
-			{AccessorKey: "id", Header: TrLang(lang, L.Users.Id), Kind: "id", Width: "5rem", MinWidth: "5rem", Sortable: true},
-			{AccessorKey: "name", Header: TrLang(lang, L.Templates.TemplateName), MinWidth: "16rem", Sortable: true},
-			{AccessorKey: "subject", Header: TrLang(lang, L.Templates.Subject), MinWidth: "16rem", Sortable: true},
-			{AccessorKey: "updatedAt", Header: TrLang(lang, L.Users.CreatedAt), Width: "12rem", MinWidth: "12rem", Sortable: true},
+func templatesCols(ctx context.Context) []datatable.ColumnDef {
+	return []datatable.ColumnDef{
+		{Field: "name", Label: Trl(ctx, L.Templates.TemplateName), Sortable: true, Filterable: true},
+		{Field: "subject", Label: Trl(ctx, L.Templates.MailSubject), Sortable: true, Filterable: true},
+		{Field: "updated_at", Label: Trl(ctx, L.Users.CreatedAt), Sortable: true, Class: "w-48"},
+	}
+}
+
+templ TemplatesTable(rows []*mq.MailTemplate, state datatable.TableState) {
+	@datatable.Table(templatesCols(ctx), state) {
+		for _, t := range rows {
+			@templatesRow(t)
+		}
+	}
+}
+
+templ templatesRow(t *mq.MailTemplate) {
+	{{ idStr := strconv.Itoa(int(t.ID)) }}
+	@table.Row(table.RowProps{
+		Attributes: templ.Attributes{
+			"hx-get":      router.Reverse(router.Templates.Detail, idStr),
+			"hx-push-url": "true",
+			"class":       "cursor-pointer",
+			"data-row-id": idStr,
 		},
-		Data:         rows,
-		EmptyMessage: TrLang(lang, L.Templates.NoTemplatesYet),
+	}) {
+		@table.Cell(table.CellProps{Class: "font-medium"}) {
+			{ t.Name }
+		}
+		@table.Cell() {
+			{ t.Subject }
+		}
+		@table.Cell() {
+			{ templateUpdatedDisplay(t) }
+		}
 	}
-}
-
-templ CurrentTemplatesTable(lang string, rows []appdb.MailTemplateTableRow, request globaltable.Request, total int64) {
-	@globaltable.Table(CurrentTemplatesTableProps(lang, rows, request, total))
 }

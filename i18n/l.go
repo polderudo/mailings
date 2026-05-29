@@ -233,7 +233,7 @@ var L = struct {
 		MailingName int
 		Template int
 		EmailList int
-		Domain int
+		Sender int
 		MailingStatus int
 		Draft int
 		Queued int
@@ -243,6 +243,11 @@ var L = struct {
 		TotalRecipients int
 		SentCount int
 		FailedCount int
+		PostmarkStatus int
+		Progress int
+		TotalMessages int
+		SubmittedAt int
+		BulkRequestId int
 		StartedAt int
 		FinishedAt int
 		CreateMailing int
@@ -250,7 +255,7 @@ var L = struct {
 		SendingStarted int
 		PleasePickATemplate int
 		PleasePickAnEmailList int
-		PleasePickADomain int
+		PleasePickASender int
 		NoMailingsYet int
 		AreYouSureYouWantToStartTheMailing int
 		BackToMailings int
@@ -281,7 +286,7 @@ var L = struct {
 		NewTemplate int
 		TemplateDetail int
 		TemplateName int
-		Subject int
+		MailSubject int
 		Body int
 		NoTemplatesYet int
 		SaveTemplate int
@@ -824,7 +829,7 @@ var L = struct {
 		MailingName int
 		Template int
 		EmailList int
-		Domain int
+		Sender int
 		MailingStatus int
 		Draft int
 		Queued int
@@ -834,6 +839,11 @@ var L = struct {
 		TotalRecipients int
 		SentCount int
 		FailedCount int
+		PostmarkStatus int
+		Progress int
+		TotalMessages int
+		SubmittedAt int
+		BulkRequestId int
 		StartedAt int
 		FinishedAt int
 		CreateMailing int
@@ -841,7 +851,7 @@ var L = struct {
 		SendingStarted int
 		PleasePickATemplate int
 		PleasePickAnEmailList int
-		PleasePickADomain int
+		PleasePickASender int
 		NoMailingsYet int
 		AreYouSureYouWantToStartTheMailing int
 		BackToMailings int
@@ -853,7 +863,7 @@ var L = struct {
 		MailingName: LK_mailing_name,
 		Template: LK_template,
 		EmailList: LK_email_list,
-		Domain: LK_domain,
+		Sender: LK_sender,
 		MailingStatus: LK_mailing_status,
 		Draft: LK_draft,
 		Queued: LK_queued,
@@ -863,6 +873,11 @@ var L = struct {
 		TotalRecipients: LK_total_recipients,
 		SentCount: LK_sent_count,
 		FailedCount: LK_failed_count,
+		PostmarkStatus: LK_postmark_status,
+		Progress: LK_progress,
+		TotalMessages: LK_total_messages,
+		SubmittedAt: LK_submitted_at,
+		BulkRequestId: LK_bulk_request_id,
 		StartedAt: LK_started_at,
 		FinishedAt: LK_finished_at,
 		CreateMailing: LK_create_mailing,
@@ -870,7 +885,7 @@ var L = struct {
 		SendingStarted: LK_sending_started,
 		PleasePickATemplate: LK_please_pick_a_template,
 		PleasePickAnEmailList: LK_please_pick_an_email_list,
-		PleasePickADomain: LK_please_pick_a_domain,
+		PleasePickASender: LK_please_pick_a_sender,
 		NoMailingsYet: LK_no_mailings_yet,
 		AreYouSureYouWantToStartTheMailing: LK_are_you_sure_you_want_to_start_the_mailing,
 		BackToMailings: LK_back_to_mailings,
@@ -920,7 +935,7 @@ var L = struct {
 		NewTemplate int
 		TemplateDetail int
 		TemplateName int
-		Subject int
+		MailSubject int
 		Body int
 		NoTemplatesYet int
 		SaveTemplate int
@@ -936,7 +951,7 @@ var L = struct {
 		NewTemplate: LK_new_template,
 		TemplateDetail: LK_template_detail,
 		TemplateName: LK_template_name,
-		Subject: LK_subject,
+		MailSubject: LK_mail_subject,
 		Body: LK_body,
 		NoTemplatesYet: LK_no_templates_yet,
 		SaveTemplate: LK_save_template,

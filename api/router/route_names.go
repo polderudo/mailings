@@ -175,6 +175,7 @@ var Lists = struct {
 	Update          string
 	Import          string
 	Delete          string
+	Recipients      string // datatable-Endpoint für Empfänger (GET + POST)
 	DeleteRecipient string
 }{
 	List:            "lists_list",
@@ -184,6 +185,7 @@ var Lists = struct {
 	Update:          "lists_update",
 	Import:          "lists_import",
 	Delete:          "lists_delete",
+	Recipients:      "lists_recipients",
 	DeleteRecipient: "lists_delete_recipient",
 }
 

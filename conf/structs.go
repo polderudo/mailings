@@ -11,6 +11,15 @@ type MailConfig struct {
 	NoAuth   bool
 }
 
+// Postmark bündelt die Konfiguration für den Newsletter-Versand über die
+// Postmark Bulk-Email-API (POST /email/bulk + GET /email/bulk/{id}).
+type Postmark struct {
+	ServerToken string // X-Postmark-Server-Token
+	ApiBaseURL  string // Default https://api.postmarkapp.com (wird in NewClient gesetzt, falls leer)
+	TrackOpens  bool
+	TrackLinks  string // "None" | "HtmlAndText" | "HtmlOnly" | "TextOnly"
+}
+
 type Database struct {
 	User           string
 	Password       string

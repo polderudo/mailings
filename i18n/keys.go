@@ -222,7 +222,7 @@ const(
 	LK_mailing_name
 	LK_template
 	LK_email_list
-	LK_domain
+	LK_sender
 	LK_mailing_status
 	LK_draft
 	LK_queued
@@ -232,6 +232,11 @@ const(
 	LK_total_recipients
 	LK_sent_count
 	LK_failed_count
+	LK_postmark_status
+	LK_progress
+	LK_total_messages
+	LK_submitted_at
+	LK_bulk_request_id
 	LK_started_at
 	LK_finished_at
 	LK_create_mailing
@@ -239,7 +244,7 @@ const(
 	LK_sending_started
 	LK_please_pick_a_template
 	LK_please_pick_an_email_list
-	LK_please_pick_a_domain
+	LK_please_pick_a_sender
 	LK_no_mailings_yet
 	LK_are_you_sure_you_want_to_start_the_mailing
 	LK_back_to_mailings
@@ -266,7 +271,7 @@ const(
 	LK_new_template
 	LK_template_detail
 	LK_template_name
-	LK_subject
+	LK_mail_subject
 	LK_body
 	LK_no_templates_yet
 	LK_save_template

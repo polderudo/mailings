@@ -18,10 +18,12 @@ var (
 )
 
 func CreateRoutes(rUser *mw.UserGroup) {
-	rUser.AddNamedRoute(router.Mailings.List, "/mailings/", mailingsApi.MailingsPage, http.MethodGet)
+	// GET + POST auf /a/mailings/: GET = Page, POST = datatable Filter.
+	// Create wandert auf /a/mailings/new/ um die HTTP-Method-Kollision aufzulösen.
+	rUser.AddNamedRoute(router.Mailings.List, "/mailings/", mailingsApi.MailingsPage, http.MethodGet, http.MethodPost)
 	rUser.AddNamedRoute(router.Mailings.New, "/mailings/new/", mailingsApi.MailingNewPage, http.MethodGet)
+	rUser.AddNamedRoute(router.Mailings.Create, "/mailings/new/", mailingsApi.MailingCreate, http.MethodPost)
 	rUser.AddNamedRoute(router.Mailings.Detail, "/mailings/:id/", mailingsApi.MailingDetailPage, http.MethodGet)
-	rUser.AddNamedRoute(router.Mailings.Create, "/mailings/", mailingsApi.MailingCreate, http.MethodPost)
 	rUser.AddNamedRoute(router.Mailings.Start, "/mailings/:id/start/", mailingsApi.MailingStart, http.MethodPost)
 }
 

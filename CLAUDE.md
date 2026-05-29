@@ -2,6 +2,22 @@
 
 Newsletter- und Mailing-Anwendung. Basiert auf der vkb-vipsstar Architektur.
 
+## ⚠️ Referenz-Submodule sind READ-ONLY
+
+Die folgenden Verzeichnisse sind als Git-Submodule eingebunden und dienen **ausschließlich
+als Nachschlagewerk / Code-Vorlage** für dieses Projekt:
+
+- `mesa2/`        — Referenz-Implementierung (Pattern für Tabellen, Filter, Routen, etc.)
+- `vkb-vipsstar/` — frühere Referenz (falls vorhanden)
+
+**Regel**: in diese Verzeichnisse **darf niemals etwas geschrieben oder gelöscht werden**.
+Keine Edits, keine neuen Dateien, keine `git`-Operationen, kein `make`/`go generate` darin.
+Wenn aus mesa2 etwas übernommen werden soll, kopiere die relevanten Stellen in unser
+eigenes Projekt und passe sie dort an.
+
+Tools wie Grep/Read/Glob dürfen mesa2 durchsuchen, um Pattern zu finden — Edit/Write/Bash
+mit Schreibwirkung dürfen sich diese Pfade niemals als Ziel suchen.
+
 ## Stack
 
 - **Sprache**: Go 1.26
@@ -206,7 +222,7 @@ Cursor-Position eingefügt werden.
 ### Postmark Broadcasts
 
 - Wir nutzen **Postmark Broadcasts** (kein eigenes SMTP):
-  - Doku: https://postmarkapp.com/developer/api/broadcasts-api
+  - Doku: https://postmarkapp.com/developer/api/bulk-email
 - Konfiguration in `data/config.yaml` → `postmark.server_token` + Domain-spezifischer Stream
 - Modul `mail/postmark/` (nach ausbauen) kapselt den Versand
 - Bei `POST /a/mailings/:id/start/` wird der Job asynchron in `mq/mailings_worker.go`
@@ -366,6 +382,271 @@ per Props oder über `dropzone.LangMap` lokalisiert werden.
 > `ui-components/avatar/dropdzone.templ` ist die ältere, avatar-spezifische
 > Variante mit Bild-Preview. Sie soll perspektivisch durch die neue
 > `dropzone`-Komponente abgelöst werden.
+
+## Paginierte Tabellen — verbindliches Pattern
+
+**Direktive**: Jede neue Listenansicht nutzt `nakami-lounge-GmbH/ui-components/datatable`
+gemeinsam mit `db.QueryPaginated` / `db.BindPaginated`. Die templui-Komponente
+`components/table` wird **nur innerhalb der datatable-children** verwendet
+(für `@table.Row` / `@table.Cell`); sie ist NIE Top-Level. Die ältere
+`ui-components/table` (`globaltable`) ist deprecated und darf in neuem Code
+nicht mehr erscheinen.
+
+Beispielimplementierungen, jeweils komplette E2E-Referenz:
+- **Einfacher Fall (eine Tabelle, Standard-Filter):** Templates
+  → `db/templates_table.go`, `views/pages/main/templates/templates_table.templ`,
+  `core/templates/api/templates.go`
+- **Mit Subselect-Spalte (recipient_count):** Lists → `db/lists_table.go`,
+  `views/pages/main/lists/lists_table.templ`
+- **Mit JOINs auf andere Tabellen:** Mailings → `db/mailings_table.go`
+- **Sub-Tabelle innerhalb Detail-Page mit Delete-Action:** Recipients
+  → `db/recipients_table.go`, `views/pages/main/lists/recipients_table.templ`,
+  Handler `ListRecipientsTable` in `core/lists/api/lists.go`
+- **Auf AnonGroup (User-Liste mit Anon-Gate):**
+  `api/anon/pages/users.go`
+
+### Architektur (drei Layer + Routen)
+
+#### 1. DB-Layer — `db/<entity>_table.go`
+
+Eine Criteria-Struct für die Filter, eine Scan-Struct (Modell + projezierte
+Spalten + `db.WithTotal`), eine View-Struct als Rückgabetyp (oft genügt
+`*mq.<Model>` direkt), eine `Query<Entity>Rows`-Funktion.
+
+```go
+package db
+
+import (
+    "app/mq"
+    "context"
+
+    "github.com/stephenafamo/bob/dialect/psql/sm"
+)
+
+// Form-Field-Namen MÜSSEN identisch zum DB-Spaltennamen sein (siehe `Handler` unten):
+// criteria.Name kommt aus dem Form-Feld <input name="name" class="dt-filter">.
+type MailTemplateCriteria struct {
+    Name    string
+    Subject string
+}
+
+type mailTemplateRowScan struct {
+    mq.MailTemplate
+    WithTotal      // injiziert `_total` Spalte (COUNT(*) OVER())
+}
+
+func QueryMailTemplateRows(ctx context.Context, p PaginationData, c MailTemplateCriteria) ([]*mq.MailTemplate, int64, error) {
+    q := SelectAllFrom("mail_template")
+    if c.Name != "" {
+        q.Apply(mq.SelectWhere.MailTemplates.Name.ILike(Like(c.Name)))
+    }
+    if c.Subject != "" {
+        q.Apply(mq.SelectWhere.MailTemplates.Subject.ILike(Like(c.Subject)))
+    }
+    return QueryPaginated[mailTemplateRowScan, *mq.MailTemplate](
+        ctx, DBob, q, p,
+        sm.OrderBy(mq.MailTemplates.Columns.Name).Asc(), // Default-Sort
+        func(r mailTemplateRowScan) *mq.MailTemplate { m := r.MailTemplate; return &m },
+    )
+}
+```
+
+**Konventionen:**
+
+- `db.SelectAllFrom("table")` ist Standard-Start. Liefert `SELECT table.*`.
+- Custom Spalten / Subselects: `q.Apply(sm.Columns(psql.Raw("(SELECT …) AS my_col")))`.
+- JOINs: `q.Apply(sm.InnerJoin("other_table ON other_table.fk = base_table.pk"))`.
+  Joined Felder werden im Scan-Struct als zusätzliche Felder mit `db:"alias"` aufgeführt.
+- Filter mit Bob-Helper: `mq.SelectWhere.<Plural>.<Col>.ILike(Like(value))` —
+  ILike/EQ/etc. nehmen direkt den Go-Wert, KEIN `psql.Arg()`.
+- Komputierte Filter (z. B. CONCAT_WS): `q.Apply(sm.Where(psql.Raw("… ILIKE ?", Like(v))))`.
+- Default-Sort als letztes Argument von `QueryPaginated` — feuert nur, wenn der
+  User keine Spalte sortiert hat.
+- Sortier-Field-Namen aus der Request landen in `ORDER BY "<field>"` —
+  Sortier-Feldname MUSS einer SQL-Spalte oder einem Alias entsprechen.
+
+#### 2. Handler — `core/<module>/api/<entity>.go`
+
+```go
+func (m *api) TemplatesPage(c *mw.UserContext) error {
+    bind := db.BindPaginated(c, 50, func(b *db.FilterBinder, criteria *db.MailTemplateCriteria) {
+        // Field-Name = HTML form-input name = ColumnDef.Field (siehe View)
+        b.String("name", &criteria.Name)
+        b.String("subject", &criteria.Subject)
+    })
+    rows, total, err := db.QueryMailTemplateRows(c.Request().Context(), bind.Pagination, bind.Criteria)
+    if err != nil {
+        return err
+    }
+    state := datatable.TableState{
+        Page:      bind.Pagination.Page,
+        Count:     bind.Pagination.Count,
+        Total:     total,
+        SortField: bind.SortField,
+        SortDesc:  bind.SortDesc,
+        Filters:   bind.Filters,
+        Endpoint:  router.Reverse(router.Templates.List),
+        Target:    "#layout-content-body",
+    }
+    if isHXRequest(c) {
+        return views.Render(c, templatesview.TemplatesPage(c.Lang, rows, state))
+    }
+    return views.Render(c, templatesview.Templates(c.UserProfile, c.Lang, rows, state))
+}
+```
+
+`db.BindPaginated` liest `sort`/`desc`/`page`/`count` aus Query (GET) oder
+Body (POST) — funktioniert für beides ohne Sonderfall. Default-Page-Size ist
+50 außer der Frontend übergibt einen anderen Count.
+
+`FilterBinder` kann:
+- `b.String(field, *string)` — text filter
+- `b.BoolPtr(field, **bool)` — `""` = kein Filter, `"true"`/`"false"` = setzen
+- `b.TimeFilter(field, **TimeFilter)` — drei Form-Felder `<f>_op`, `<f>_date1`,
+  `<f>_date2` aus `dateinput.DateInput` zusammen
+
+`state.Target` setzt das HTMX-Swap-Ziel der datatable-Form:
+- Hauptlisten: `"#layout-content-body"` — datatable ersetzt den kompletten Seiteninhalt.
+- Sub-Tabellen: eigener Container, z. B. `"#list-recipients-table-container"`.
+
+#### 3. View — `views/pages/main/<module>/<entity>_table.templ`
+
+```go
+package templatesview
+
+import (
+    "app/api/router"
+    "app/mq"
+    . "app/i18n"
+    "context"
+    "strconv"
+
+    "github.com/nakami-lounge-GmbH/ui-components/datatable"
+    "github.com/templui/templui/components/table"
+)
+
+func templatesCols(ctx context.Context) []datatable.ColumnDef {
+    return []datatable.ColumnDef{
+        {Field: "name", Label: Trl(ctx, L.Templates.TemplateName), Sortable: true, Filterable: true},
+        {Field: "subject", Label: Trl(ctx, L.Templates.MailSubject), Sortable: true, Filterable: true},
+        {Field: "updated_at", Label: Trl(ctx, L.Users.CreatedAt), Sortable: true, Class: "w-48"},
+    }
+}
+
+templ TemplatesTable(rows []*mq.MailTemplate, state datatable.TableState) {
+    @datatable.Table(templatesCols(ctx), state) {
+        for _, t := range rows {
+            @templatesRow(t)
+        }
+    }
+}
+
+templ templatesRow(t *mq.MailTemplate) {
+    {{ idStr := strconv.Itoa(int(t.ID)) }}
+    @table.Row(table.RowProps{
+        Attributes: templ.Attributes{
+            "hx-get":      router.Reverse(router.Templates.Detail, idStr),
+            "hx-push-url": "true",
+            "class":       "cursor-pointer",
+            "data-row-id": idStr,
+        },
+    }) {
+        @table.Cell(table.CellProps{Class: "font-medium"}) { { t.Name } }
+        @table.Cell() { { t.Subject } }
+        @table.Cell() { { templateUpdatedDisplay(t) } }
+    }
+}
+```
+
+**ColumnDef-Felder:**
+
+- `Field` — Identifier. Wird verwendet als (1) form-input `name` für den Filter
+  und (2) SQL-Sort-Feld (`ORDER BY "<field>"`). Muss zur DB-Spalte bzw. zum
+  Alias passen.
+- `Label` — i18n-Übersetzung des Header-Texts.
+- `Sortable` — zeigt Sort-Icon + macht den Header klickbar.
+- `Filterable` — zeigt eine zweite Header-Zeile mit Filter-Input (default: text).
+- `FilterComponent` — optional, ersetzt den Default-Input (z. B.
+  `dateinput.DateInput(dateinput.TimeFilterValue(db.TimeFilterFormValues("created_at", state.Filters)))`).
+- `Class` — Tailwind-Klassen für Header- und Body-Zellen (nutze für Spaltenbreite).
+
+Row-Konvention: `data-row-id` auf dem `<tr>` aktiviert clientseitige
+Auswahl-Persistenz (`dt-row-selected`) über Sort/Page/Filter hinweg.
+
+#### 4. Routen
+
+```go
+func CreateRoutes(rUser *mw.UserGroup) {
+    // GET = initiale Page, POST = datatable Sort/Filter/Page-Submit.
+    rUser.AddNamedRoute(router.Templates.List, "/templates/", api.TemplatesPage,
+        http.MethodGet, http.MethodPost)
+    // Create wandert auf /new/, sonst kollidiert POST /a/templates/ mit dem datatable-POST.
+    rUser.AddNamedRoute(router.Templates.New, "/templates/new/", api.TemplateNewPage, http.MethodGet)
+    rUser.AddNamedRoute(router.Templates.Create, "/templates/new/", api.TemplateCreate, http.MethodPost)
+    rUser.AddNamedRoute(router.Templates.Detail, "/templates/:id/", api.TemplateDetailPage, http.MethodGet)
+    // …
+}
+```
+
+- **`Lists.List` = GET + POST**: datatable's `<form hx-post>` zielt zurück auf
+  dieselbe URL. Der Handler unterscheidet die Anfragen nicht — `db.BindPaginated`
+  reagiert auf Query-String (GET) oder Form-Body (POST) gleich.
+- **Create darf NICHT auf `/a/<entity>/` POST sein** — kollidiert mit dem
+  datatable-POST. Stattdessen auf `/new/` legen (`Templates.Create`,
+  `Lists.Create`, `Mailings.Create` machen das so).
+- **Detail-Page mit Sub-Tabelle (Recipients-Pattern)**: separate Route
+  `/a/<entity>/:id/sub/` als GET + POST, antwortet nur mit dem inneren
+  Tabellen-Template (nicht das umschließende Panel). Initial wird die Tabelle
+  im Detail-Handler vorab-gerendert und als Teil der Detail-Page ausgeliefert.
+
+### Verhalten: Filter triggern auf `change`, nicht `blur`
+
+`ui-components/datatable/datatable.templ` triggert das Form-Submit mit
+`hx-trigger="submit, change from:.dt-filter, keyup[key=='Enter'] from:.dt-filter"`.
+`change` feuert nur, wenn der Wert beim Verlassen anders ist als beim
+Reinklicken — leeres Klicken durch Filter-Felder triggert kein Reload mehr.
+Enter triggert immer.
+
+### Form-Field-Konvention (wichtigste Quelle für Bugs)
+
+Drei Stellen, die alle denselben Identifier verwenden müssen:
+
+| Stelle | Beispiel |
+|---|---|
+| `ColumnDef.Field` im View | `{Field: "name", …}` |
+| `b.String(name, …)` im Handler | `b.String("name", &criteria.Name)` |
+| DB-Spalte (oder Alias bei Subselect) | `mq.SelectWhere.MailTemplates.Name` |
+
+Wenn ein Filter „wirkt nicht" oder ein Sort „macht nichts": diese drei Namen
+abgleichen. Joined/komputierte Spalten brauchen Alias mit identischem Namen
+(`psql.Raw("… AS template_name")` + `{Field: "template_name", …}`).
+
+### Was NICHT mehr verwendet wird
+
+- `ui-components/table.Table` (das alte `globaltable`) — deprecated, keine
+  Verwendung in neuem Code.
+- `db.LoadXxxTableRows` / `FilterRequest[map[string]string]` — Altcode-Layer,
+  nicht erweitern.
+- `globaltable.ReadRequest` / `globaltable.Request` — gleicher Layer wie oben,
+  obsolet.
+
+### Edge Cases
+
+- **Joined Tabellen**: Scan-Struct erweitert mit gemappten Feldern,
+  Query mit `sm.InnerJoin` + `sm.Columns(psql.Raw("alias.col AS my_alias"))`.
+- **Computed Columns (z. B. Counter)**: Subselect via
+  `sm.Columns(psql.Raw("(SELECT COUNT(*) FROM …) AS my_count"))`.
+  Im Scan-Struct als `MyCount int64 \`db:"my_count"\``.
+- **Tri-state Bool-Filter (Status active/disabled/all)**: `b.BoolPtr` oder
+  `b.String` + Switch im DB-Layer (`case "active": q.Apply(…EQ(false))`).
+- **Date-Range-Filter**: `b.TimeFilter` im Handler + `dateinput.DateInput` als
+  `FilterComponent` im View — die drei Form-Felder werden automatisch
+  zusammengeführt.
+
+### Build / Smoke
+
+Nach jeder Tabellen-Änderung: `templ generate` + `go build -o app .` + im
+Browser kurz Sort, Filter und Pagination antesten.
 
 ## gograph MCP Server
 

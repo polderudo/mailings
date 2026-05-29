@@ -17,36 +17,34 @@ import (
 
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
 
 func (m *api) TemplatesPage(c *mw.UserContext) error {
-	request := globaltable.ReadRequest(c.Request(), templatesview.CurrentTemplatesTableID)
-	sorts := make(db.SortParams, len(request.Pagination.Sorts))
-	for i, s := range request.Pagination.Sorts {
-		sorts[i] = db.SortParam{Field: s.Field, IsDesc: s.IsDesc}
-	}
-	rows, total, err := db.LoadMailTemplateTableRows(c.Request().Context(), db.FilterRequest[map[string]string]{
-		P: db.PaginationData{
-			Page:  request.Pagination.Page,
-			Count: request.Pagination.Count,
-			Sorts: sorts,
-		},
-		FilterCriteria: request.FilterCriteria,
+	bind := db.BindPaginated(c, 50, func(b *db.FilterBinder, criteria *db.MailTemplateCriteria) {
+		b.String("name", &criteria.Name)
+		b.String("subject", &criteria.Subject)
 	})
+	rows, total, err := db.QueryMailTemplateRows(c.Request().Context(), bind.Pagination, bind.Criteria)
 	if err != nil {
 		return err
 	}
-
-	if isHXRequest(c) {
-		if c.Request().Header.Get("HX-Target") == templatesview.CurrentTemplatesTableID {
-			return views.Render(c, templatesview.CurrentTemplatesTable(c.Lang, rows, request, total))
-		}
-		return views.Render(c, templatesview.TemplatesPage(c.Lang, rows, request, total))
+	state := datatable.TableState{
+		Page:      bind.Pagination.Page,
+		Count:     bind.Pagination.Count,
+		Total:     total,
+		SortField: bind.SortField,
+		SortDesc:  bind.SortDesc,
+		Filters:   bind.Filters,
+		Endpoint:  router.Reverse(router.Templates.List),
+		Target:    "#layout-content-body",
 	}
-	return views.Render(c, templatesview.Templates(c.UserProfile, c.Lang, rows, request, total))
+	if isHXRequest(c) {
+		return views.Render(c, templatesview.TemplatesPage(c.Lang, rows, state))
+	}
+	return views.Render(c, templatesview.Templates(c.UserProfile, c.Lang, rows, state))
 }
 
 func (m *api) TemplateNewPage(c *mw.UserContext) error {

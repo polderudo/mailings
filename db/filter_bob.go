@@ -1,12 +1,14 @@
 package db
 
 import (
+	"context"
 	"time"
 
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/scan"
 )
 
 // TimeFilter defines a filter operation for time data
@@ -62,8 +64,53 @@ const (
 	OpGTE     = ">="
 )
 
-// ApplySortsLimitOffset applies all the sorting and limits to the query
-func ApplySortsLimitOffset(q bob.BaseQuery[*dialect.SelectQuery], p PaginationData, defaultSort dialect.OrderBy[*dialect.SelectQuery]) { //ApplySortsLimitOffset[T any, Ts ~[]T](q *psql.ViewQuery[T, Ts], p PaginationData) {
+// SelectAllFrom returns a query that selects all columns from the given table
+// (SELECT table.* FROM table). Use with ApplySortsLimitOffset and bob.All.
+func SelectAllFrom(table string) bob.BaseQuery[*dialect.SelectQuery] {
+	return psql.Select(
+		sm.From(table),
+		sm.Columns(table+".*"),
+	)
+}
+
+// QueryPaginated applies sorting/limit/offset, executes the query in one DB
+// round-trip (including COUNT(*) OVER() AS _total), and extracts the results.
+//
+// Row is the local scan struct (embedding the model and db.WithTotal).
+// T is the model pointer type returned to the caller.
+// fn extracts T from Row; Go infers both type parameters from fn.
+//
+// Example:
+//
+//	rawData, total, err := db.QueryPaginated(
+//	    ctx, db.DBob, q, r.Pagination,
+//	    sm.OrderBy(cn.MatDefID.Name).Asc(),
+//	    func(r matDefRow) *mq.MatDef { return &r.MatDef },
+//	)
+func QueryPaginated[Row interface{ GetTotal() int64 }, T any](
+	ctx context.Context,
+	exec bob.Executor,
+	q bob.BaseQuery[*dialect.SelectQuery],
+	p PaginationData,
+	defaultSort dialect.OrderBy[*dialect.SelectQuery],
+	fn func(Row) T,
+) ([]T, int64, error) {
+	ApplySortsLimitOffset(q, p, defaultSort)
+	rows, err := bob.All(ctx, exec, q, scan.StructMapper[Row]())
+	if err != nil {
+		return nil, 0, err
+	}
+	data, total := extractRows(rows, fn)
+	return data, total, nil
+}
+
+// ApplySortsLimitOffset applies sorting, limit, and offset to the query.
+// It also appends COUNT(*) OVER() AS _total to the SELECT list so that
+// callers can retrieve the pre-pagination total in a single DB round-trip.
+// Existing callers that scan into the plain model type are unaffected because
+// scan.StructMapper ignores unknown columns.
+func ApplySortsLimitOffset(q bob.BaseQuery[*dialect.SelectQuery], p PaginationData, defaultSort dialect.OrderBy[*dialect.SelectQuery]) {
+	q.Apply(sm.Columns(psql.Raw("COUNT(*) OVER() AS _total")))
 	ApplySortsToQuery(q, p.Sorts, defaultSort)
 	applyLimit(q, p.Count)
 	applyOffset(q, p.Offset())

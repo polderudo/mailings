@@ -19,8 +19,8 @@
 - EN: Email list
   DE: E-Mail-Liste
 
-- EN: Domain
-  DE: Domain
+- EN: Sender
+  DE: Absender
 
 - EN: Mailing status
   DE: Mailing-Status
@@ -49,6 +49,21 @@
 - EN: Failed count
   DE: Fehlgeschlagen
 
+- EN: Postmark status
+  DE: Postmark-Status
+
+- EN: Progress
+  DE: Fortschritt
+
+- EN: Total messages
+  DE: Nachrichten gesamt
+
+- EN: Submitted at
+  DE: Übermittelt am
+
+- EN: Bulk request ID
+  DE: Bulk-Request-ID
+
 - EN: Started at
   DE: Gestartet um
 
@@ -70,8 +85,8 @@
 - EN: Please pick an email list
   DE: Bitte E-Mail-Liste auswählen
 
-- EN: Please pick a domain
-  DE: Bitte Domain auswählen
+- EN: Please pick a sender
+  DE: Bitte Absender auswählen
 
 - EN: No mailings yet
   DE: Noch keine Mailings vorhanden

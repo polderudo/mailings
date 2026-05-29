@@ -18,10 +18,14 @@ import (
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/nakami-lounge-GmbH/tools/importer"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
+
+// defaultPageSize ist die Default-Page-Size, wenn die UI keine count-Param
+// mitschickt. Wert wie in mesa2.
+const defaultPageSize int64 = 50
 
 // excelRecipientRow ist das Importer-Schema für eine Zeile Empfänger.
 // Die `header`-Tags müssen mit den Excel-Spaltenüberschriften übereinstimmen
@@ -33,29 +37,28 @@ type excelRecipientRow struct {
 }
 
 func (m *api) ListsPage(c *mw.UserContext) error {
-	request := globaltable.ReadRequest(c.Request(), listsview.CurrentListsTableID)
-	sorts := make(db.SortParams, len(request.Pagination.Sorts))
-	for i, s := range request.Pagination.Sorts {
-		sorts[i] = db.SortParam{Field: s.Field, IsDesc: s.IsDesc}
-	}
-	rows, total, err := db.LoadMailListTableRows(c.Request().Context(), db.FilterRequest[map[string]string]{
-		P: db.PaginationData{
-			Page:  request.Pagination.Page,
-			Count: request.Pagination.Count,
-			Sorts: sorts,
-		},
-		FilterCriteria: request.FilterCriteria,
+	bind := db.BindPaginated(c, defaultPageSize, func(b *db.FilterBinder, criteria *db.MailListCriteria) {
+		b.String("name", &criteria.Name)
+		b.String("description", &criteria.Description)
 	})
+	rows, total, err := db.QueryMailListRows(c.Request().Context(), bind.Pagination, bind.Criteria)
 	if err != nil {
 		return err
 	}
-	if isHXRequest(c) {
-		if c.Request().Header.Get("HX-Target") == listsview.CurrentListsTableID {
-			return views.Render(c, listsview.CurrentListsTable(c.Lang, rows, request, total))
-		}
-		return views.Render(c, listsview.ListsPage(c.Lang, rows, request, total))
+	state := datatable.TableState{
+		Page:      bind.Pagination.Page,
+		Count:     bind.Pagination.Count,
+		Total:     total,
+		SortField: bind.SortField,
+		SortDesc:  bind.SortDesc,
+		Filters:   bind.Filters,
+		Endpoint:  router.Reverse(router.Lists.List),
+		Target:    "#layout-content-body",
 	}
-	return views.Render(c, listsview.Lists(c.UserProfile, c.Lang, rows, request, total))
+	if isHXRequest(c) {
+		return views.Render(c, listsview.ListsPage(c.Lang, rows, state))
+	}
+	return views.Render(c, listsview.Lists(c.UserProfile, c.Lang, rows, state))
 }
 
 func (m *api) ListNewPage(c *mw.UserContext) error {
@@ -76,16 +79,27 @@ func (m *api) ListDetailPage(c *mw.UserContext) error {
 	if err != nil || l == nil {
 		return fmt.Errorf("list not found")
 	}
-	recipients, err := LoadListRecipients(ctx, l.ID)
+
+	// Initial: Page 1, keine Filter — datatable übernimmt anschließend.
+	rows, total, err := db.QueryMailListRecipientRows(
+		c.Request().Context(),
+		db.PaginationData{Page: 1, Count: defaultPageSize},
+		db.MailListRecipientCriteria{ListID: l.ID},
+	)
 	if err != nil {
 		return err
 	}
+	state := recipientsTableState(l.ID, db.PagedBindResult[db.MailListRecipientCriteria]{
+		Pagination: db.PaginationData{Page: 1, Count: defaultPageSize},
+	}, total)
+
 	data := listsview.ListFormData{
-		ID:          l.ID,
-		Name:        l.Name,
-		Description: l.Description,
-		Recipients:  recipients,
-		IsNew:       false,
+		ID:              l.ID,
+		Name:            l.Name,
+		Description:     l.Description,
+		IsNew:           false,
+		RecipientsRows:  rows,
+		RecipientsState: state,
 	}
 	if isHXRequest(c) {
 		return views.Render(c, listsview.ListDetailPage(c.Lang, data))
@@ -93,12 +107,56 @@ func (m *api) ListDetailPage(c *mw.UserContext) error {
 	return views.Render(c, listsview.ListDetail(c.UserProfile, c.Lang, data))
 }
 
-// LoadListRecipients lädt alle Empfänger für eine Email-Liste.
-func LoadListRecipients(ctx context.Context, listID int32) ([]*mq.MailListRecipient, error) {
-	return mq.MailListRecipients.Query(
-		sm.Where(mq.MailListRecipients.Columns.ListID.EQ(psql.Arg(listID))),
-		sm.OrderBy(mq.MailListRecipients.Columns.Email),
-	).All(ctx, db.DBob)
+// ListRecipientsTable beantwortet POST/GET /a/lists/:id/recipients/ —
+// gibt NUR die Tabelle zurück (für datatable-Sort/Filter/Page).
+func (m *api) ListRecipientsTable(c *mw.UserContext) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid list id: %w", err)
+	}
+	bind := db.BindPaginated(c, defaultPageSize, func(b *db.FilterBinder, criteria *db.MailListRecipientCriteria) {
+		criteria.ListID = int32(id)
+		b.String("email", &criteria.Email)
+		b.String("forename", &criteria.Forename)
+		b.String("lastname", &criteria.Lastname)
+	})
+	rows, total, err := db.QueryMailListRecipientRows(c.Request().Context(), bind.Pagination, bind.Criteria)
+	if err != nil {
+		return err
+	}
+	state := recipientsTableState(int32(id), bind, total)
+	return views.Render(c, listsview.ListRecipientsTable(rows, state))
+}
+
+func recipientsTableState(listID int32, bind db.PagedBindResult[db.MailListRecipientCriteria], total int64) datatable.TableState {
+	return datatable.TableState{
+		Page:      bind.Pagination.Page,
+		Count:     bind.Pagination.Count,
+		Total:     total,
+		SortField: bind.SortField,
+		SortDesc:  bind.SortDesc,
+		Filters:   bind.Filters,
+		Endpoint:  router.Reverse(router.Lists.Recipients, strconv.Itoa(int(listID))),
+		Target:    "#list-recipients-table-container",
+	}
+}
+
+// loadInitialRecipientsPanel rendert das gesamte ListRecipientsPanel mit
+// Page=1/keine Filter — wird nach Import und Delete als HTMX-Response
+// zurückgegeben (target = #list-recipients-panel).
+func loadInitialRecipientsPanel(ctx context.Context, listID int32) ([]*mq.MailListRecipient, datatable.TableState, error) {
+	rows, total, err := db.QueryMailListRecipientRows(
+		ctx,
+		db.PaginationData{Page: 1, Count: defaultPageSize},
+		db.MailListRecipientCriteria{ListID: listID},
+	)
+	if err != nil {
+		return nil, datatable.TableState{}, err
+	}
+	state := recipientsTableState(listID, db.PagedBindResult[db.MailListRecipientCriteria]{
+		Pagination: db.PaginationData{Page: 1, Count: defaultPageSize},
+	}, total)
+	return rows, state, nil
 }
 
 // CountListRecipients zählt die Empfänger einer Liste. Wird auf der
@@ -245,19 +303,12 @@ func (m *api) ListImport(c *mw.UserContext) error {
 		}
 	}
 
-	recipients, err := LoadListRecipients(ctx, l.ID)
+	rows, state, err := loadInitialRecipientsPanel(ctx, l.ID)
 	if err != nil {
 		return err
 	}
-	data := listsview.ListFormData{
-		ID:          l.ID,
-		Name:        l.Name,
-		Description: l.Description,
-		Recipients:  recipients,
-		IsNew:       false,
-	}
 	return views.RenderWithToast(c,
-		listsview.ListRecipientsPanel(c.Lang, data),
+		listsview.ListRecipientsPanel(c.Lang, l.ID, rows, state),
 		"success",
 		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
 		fmt.Sprintf("%d %s", added, i18n.TrLang(c.Lang, i18n.L.Lists.RecipientsImported)),
@@ -317,19 +368,12 @@ func (m *api) ListRecipientDelete(c *mw.UserContext) error {
 		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
 	}
 
-	recipients, err := LoadListRecipients(ctx, l.ID)
+	rows, state, err := loadInitialRecipientsPanel(ctx, l.ID)
 	if err != nil {
 		return err
 	}
-	data := listsview.ListFormData{
-		ID:          l.ID,
-		Name:        l.Name,
-		Description: l.Description,
-		Recipients:  recipients,
-		IsNew:       false,
-	}
 	return views.RenderWithToast(c,
-		listsview.ListRecipientsPanel(c.Lang, data),
+		listsview.ListRecipientsPanel(c.Lang, l.ID, rows, state),
 		"success",
 		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
 		i18n.TrLang(c.Lang, i18n.L.Lists.RecipientRemoved),

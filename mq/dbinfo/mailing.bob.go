@@ -87,8 +87,35 @@ var Mailings = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		SentCount: column{
-			Name:      "sent_count",
+		PostmarkBulkRequestID: column{
+			Name:      "postmark_bulk_request_id",
+			DBType:    "character varying",
+			Default:   "''::character varying",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		PostmarkStatus: column{
+			Name:      "postmark_status",
+			DBType:    "character varying",
+			Default:   "''::character varying",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		PostmarkSubmittedAt: column{
+			Name:      "postmark_submitted_at",
+			DBType:    "timestamp with time zone",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		PostmarkTotalMessages: column{
+			Name:      "postmark_total_messages",
 			DBType:    "integer",
 			Default:   "0",
 			Comment:   "",
@@ -96,9 +123,9 @@ var Mailings = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		FailedCount: column{
-			Name:      "failed_count",
-			DBType:    "integer",
+		PostmarkPercentageCompleted: column{
+			Name:      "postmark_percentage_completed",
+			DBType:    "double precision",
 			Default:   "0",
 			Comment:   "",
 			Nullable:  false,
@@ -304,27 +331,30 @@ var Mailings = Table[
 }
 
 type mailingColumns struct {
-	ID              column
-	Name            column
-	TemplateID      column
-	ListID          column
-	DomainID        column
-	Status          column
-	SubjectSnapshot column
-	BodySnapshot    column
-	SentCount       column
-	FailedCount     column
-	StartedAt       column
-	FinishedAt      column
-	CreatedByUserID column
-	UpdatedByUserID column
-	CreatedAt       column
-	UpdatedAt       column
+	ID                          column
+	Name                        column
+	TemplateID                  column
+	ListID                      column
+	DomainID                    column
+	Status                      column
+	SubjectSnapshot             column
+	BodySnapshot                column
+	PostmarkBulkRequestID       column
+	PostmarkStatus              column
+	PostmarkSubmittedAt         column
+	PostmarkTotalMessages       column
+	PostmarkPercentageCompleted column
+	StartedAt                   column
+	FinishedAt                  column
+	CreatedByUserID             column
+	UpdatedByUserID             column
+	CreatedAt                   column
+	UpdatedAt                   column
 }
 
 func (c mailingColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.SentCount, c.FailedCount, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.PostmarkBulkRequestID, c.PostmarkStatus, c.PostmarkSubmittedAt, c.PostmarkTotalMessages, c.PostmarkPercentageCompleted, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
 	}
 }
 

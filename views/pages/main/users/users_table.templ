@@ -2,83 +2,59 @@ package usersview
 
 import (
 	"app/api/router"
-	appdb "app/db"
 	. "app/i18n"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"app/mq"
+	"context"
+	"strconv"
+	"strings"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	"github.com/templui/templui/components/table"
 )
 
-const CurrentUsersTableID = "users-table"
-
-func normalizeUsersTableRequest(request globaltable.Request) globaltable.Request {
-	if request.FilterCriteria == nil {
-		request.FilterCriteria = map[string]string{}
-	}
-	if request.Pagination.Page < 1 {
-		request.Pagination.Page = 1
-	}
-	if request.Pagination.Count <= 0 {
-		request.Pagination.Count = 50
-	}
-	if len(request.Pagination.Sorts) == 0 {
-		request.Pagination.Sorts = []globaltable.SortParam{{
-			Field:  "fullName",
-			IsDesc: false,
-		}}
-	}
-	return request
-}
-
-func CurrentUsersTableProps(lang string, rows []appdb.UserProfileTableRow, request globaltable.Request, total int64) globaltable.TableProps {
-	return globaltable.TableProps{
-		Lang:                NormalizeLang(lang),
-		ID:                  CurrentUsersTableID,
-		Class:               "mt-6",
-		Endpoint:            router.Reverse(router.Users.List),
-		Request:             normalizeUsersTableRequest(request),
-		Total:               total,
-		Title:               TrLang(lang, L.Users.AllUsers),
-		Description:         TrLang(lang, L.Users.ListOfAllRegisteredUsers),
-		RowClickAccessorKey: "id",
-		RowClickURLPattern:  router.Reverse(router.Users.Detail, "{value}"),
-		PageSizes: []int{
-			10,
-			25,
-			50,
-			100,
-		},
-		Columns: []globaltable.Column{
-			{
-				AccessorKey: "id",
-				Header:      TrLang(lang, L.Users.Id),
-				Kind:        "id",
-				Width:       "5rem",
-				MinWidth:    "5rem",
-				Sortable:    true,
-			},
-			{
-				AccessorKey: "fullName",
-				Header:      TrLang(lang, L.Users.User),
-				MinWidth:    "18rem",
-				Sortable:    true,
-				Display: globaltable.ColumnDisplay{
-					Variant:             "stacked",
-					SubtitleAccessorKey: "email",
-				},
-			},
-			{
-				AccessorKey: "accountStatus",
-				Header:      TrLang(lang, LK_status),
-				Kind:        "status",
-				Width:       "9rem",
-				MinWidth:    "9rem",
-				Sortable:    true,
-			},
-		},
-		Data:         rows,
-		EmptyMessage: TrLang(lang, L.Users.NoUsersFound),
+func usersCols(ctx context.Context) []datatable.ColumnDef {
+	return []datatable.ColumnDef{
+		{Field: "full_name", Label: Trl(ctx, L.Users.User), Sortable: false, Filterable: true},
+		{Field: "status", Label: Trl(ctx, LK_status), Sortable: false, Filterable: true, Class: "w-32"},
 	}
 }
 
-templ CurrentUsersTable(lang string, rows []appdb.UserProfileTableRow, request globaltable.Request, total int64) {
-	@globaltable.Table(CurrentUsersTableProps(lang, rows, request, total))
+templ UsersTable(rows []*mq.UserProfile, state datatable.TableState) {
+	@datatable.Table(usersCols(ctx), state) {
+		for _, u := range rows {
+			@usersRow(u)
+		}
+	}
+}
+
+templ usersRow(u *mq.UserProfile) {
+	{{ idStr := strconv.Itoa(int(u.ID)) }}
+	{{
+		fullName := strings.TrimSpace(strings.Join([]string{u.Forename, u.Lastname}, " "))
+		if fullName == "" {
+			fullName = u.Email
+		}
+		status := "active"
+		if u.Disabled {
+			status = "disabled"
+		}
+	}}
+	@table.Row(table.RowProps{
+		Attributes: templ.Attributes{
+			"hx-get":      router.Reverse(router.Users.Detail, idStr),
+			"hx-push-url": "true",
+			"class":       "cursor-pointer",
+			"data-row-id": idStr,
+		},
+	}) {
+		@table.Cell() {
+			<div class="flex flex-col">
+				<span class="font-medium">{ fullName }</span>
+				<span class="text-xs text-muted-foreground">{ u.Email }</span>
+			</div>
+		}
+		@table.Cell() {
+			{ status }
+		}
+	}
 }

@@ -1,26 +1,25 @@
 package usersview
 
 import (
-	"app/db"
 	. "app/i18n"
 	"app/mq"
 	. "app/views/layout"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 	breadcrumb "github.com/templui/templui/components/breadcrumb"
 )
 
-templ Users(user *mq.UserProfile, lang string, rows []db.UserProfileTableRow, request globaltable.Request, total int64, filters UsersFilterData) {
+templ Users(user *mq.UserProfile, lang string, rows []*mq.UserProfile, state datatable.TableState) {
 	@UserLayout(user, lang, Trl(ctx, L.Users.AllUsers)) {
-		@UsersPage(lang, rows, request, total, filters)
+		@UsersPage(lang, rows, state)
 	}
 }
 
-templ UsersPage(lang string, rows []db.UserProfileTableRow, request globaltable.Request, total int64, filters UsersFilterData) {
+templ UsersPage(lang string, rows []*mq.UserProfile, state datatable.TableState) {
 	<div class="space-y-4">
 		@UsersBreadcrumbs(lang)
-		@UsersFilterPanel(lang, filters)
 		<div>
-			@CurrentUsersTable(lang, rows, request, total)
+			@UsersTable(rows, state)
 		</div>
 	</div>
 }

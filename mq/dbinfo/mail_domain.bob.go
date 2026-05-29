@@ -24,8 +24,8 @@ var MailDomains = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		Domain: column{
-			Name:      "domain",
+		Sender: column{
+			Name:      "sender",
 			DBType:    "character varying",
 			Default:   "",
 			Comment:   "",
@@ -106,12 +106,12 @@ var MailDomains = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		MailDomainIxDomain: index{
+		MailDomainIxSender: index{
 			Type: "btree",
-			Name: "mail_domain_ix_domain",
+			Name: "mail_domain_ix_sender",
 			Columns: []indexColumn{
 				{
-					Name:         "lower(domain::text)",
+					Name:         "lower(sender::text)",
 					Desc:         null.FromCond(false, true),
 					IsExpression: true,
 				},
@@ -135,7 +135,7 @@ var MailDomains = Table[
 
 type mailDomainColumns struct {
 	ID               column
-	Domain           column
+	Sender           column
 	FromEmail        column
 	FromName         column
 	PostmarkStreamID column
@@ -146,18 +146,18 @@ type mailDomainColumns struct {
 
 func (c mailDomainColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Domain, c.FromEmail, c.FromName, c.PostmarkStreamID, c.IsActive, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.Sender, c.FromEmail, c.FromName, c.PostmarkStreamID, c.IsActive, c.CreatedAt, c.UpdatedAt,
 	}
 }
 
 type mailDomainIndexes struct {
 	MailDomainPkey     index
-	MailDomainIxDomain index
+	MailDomainIxSender index
 }
 
 func (i mailDomainIndexes) AsSlice() []index {
 	return []index{
-		i.MailDomainPkey, i.MailDomainIxDomain,
+		i.MailDomainPkey, i.MailDomainIxSender,
 	}
 }
 

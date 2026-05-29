@@ -28,7 +28,7 @@ import (
 // MailDomain is an object representing the database table.
 type MailDomain struct {
 	ID               int32               `db:"id,pk" json:"id"`
-	Domain           string              `db:"domain" json:"domain"`
+	Sender           string              `db:"sender" json:"sender"`
 	FromEmail        string              `db:"from_email" json:"from_email"`
 	FromName         string              `db:"from_name" json:"from_name"`
 	PostmarkStreamID string              `db:"postmark_stream_id" json:"postmark_stream_id"`
@@ -67,7 +67,7 @@ type mailDomainRLoaded struct {
 
 func buildMailDomainColumns(tableName string) mailDomainColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "domain", "from_email", "from_name", "postmark_stream_id", "is_active", "created_at", "updated_at",
+		"id", "sender", "from_email", "from_name", "postmark_stream_id", "is_active", "created_at", "updated_at",
 	)
 
 	if tableName != "" {
@@ -78,7 +78,7 @@ func buildMailDomainColumns(tableName string) mailDomainColumns {
 		ColumnsExpr:      columnsExpr,
 		tableAlias:       tableName,
 		ID:               buildMailDomainColumn(tableName, "id"),
-		Domain:           buildMailDomainColumn(tableName, "domain"),
+		Sender:           buildMailDomainColumn(tableName, "sender"),
 		FromEmail:        buildMailDomainColumn(tableName, "from_email"),
 		FromName:         buildMailDomainColumn(tableName, "from_name"),
 		PostmarkStreamID: buildMailDomainColumn(tableName, "postmark_stream_id"),
@@ -92,7 +92,7 @@ type mailDomainColumns struct {
 	expr.ColumnsExpr
 	tableAlias       string
 	ID               mailDomainColumn
-	Domain           mailDomainColumn
+	Sender           mailDomainColumn
 	FromEmail        mailDomainColumn
 	FromName         mailDomainColumn
 	PostmarkStreamID mailDomainColumn
@@ -145,7 +145,7 @@ func (c mailDomainColumn) ShouldOmitParens() bool {
 // Generated columns are not included
 type MailDomainSetter struct {
 	ID               omit.Val[int32]         `db:"id,pk" json:"id"`
-	Domain           omit.Val[string]        `db:"domain" json:"domain"`
+	Sender           omit.Val[string]        `db:"sender" json:"sender"`
 	FromEmail        omit.Val[string]        `db:"from_email" json:"from_email"`
 	FromName         omit.Val[string]        `db:"from_name" json:"from_name"`
 	PostmarkStreamID omit.Val[string]        `db:"postmark_stream_id" json:"postmark_stream_id"`
@@ -159,8 +159,8 @@ func (s MailDomainSetter) SetColumns() []string {
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
-	if s.Domain.IsValue() {
-		vals = append(vals, "domain")
+	if s.Sender.IsValue() {
+		vals = append(vals, "sender")
 	}
 	if s.FromEmail.IsValue() {
 		vals = append(vals, "from_email")
@@ -187,8 +187,8 @@ func (s MailDomainSetter) Overwrite(t *MailDomain) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
-	if s.Domain.IsValue() {
-		t.Domain = s.Domain.MustGet()
+	if s.Sender.IsValue() {
+		t.Sender = s.Sender.MustGet()
 	}
 	if s.FromEmail.IsValue() {
 		t.FromEmail = s.FromEmail.MustGet()
@@ -223,8 +223,8 @@ func (s *MailDomainSetter) Apply(q *dialect.InsertQuery) {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.Domain.IsValue() {
-			vals[1] = psql.Arg(s.Domain.MustGet())
+		if s.Sender.IsValue() {
+			vals[1] = psql.Arg(s.Sender.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
@@ -283,10 +283,10 @@ func (s MailDomainSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.Domain.IsValue() {
+	if s.Sender.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "domain")...),
-			psql.Arg(s.Domain),
+			psql.Quote(append(prefix, "sender")...),
+			psql.Arg(s.Sender),
 		}})
 	}
 
@@ -677,7 +677,7 @@ func (mailDomain0 *MailDomain) AttachDomainMailings(ctx context.Context, exec bo
 
 type mailDomainWhere[Q psql.Filterable] struct {
 	ID               psql.WhereMod[Q, int32]
-	Domain           psql.WhereMod[Q, string]
+	Sender           psql.WhereMod[Q, string]
 	FromEmail        psql.WhereMod[Q, string]
 	FromName         psql.WhereMod[Q, string]
 	PostmarkStreamID psql.WhereMod[Q, string]
@@ -693,7 +693,7 @@ func (mailDomainWhere[Q]) AliasedAs(alias string) mailDomainWhere[Q] {
 func buildMailDomainWhere[Q psql.Filterable](cols mailDomainColumns) mailDomainWhere[Q] {
 	return mailDomainWhere[Q]{
 		ID:               psql.Where[Q, int32](cols.ID.Expression),
-		Domain:           psql.Where[Q, string](cols.Domain.Expression),
+		Sender:           psql.Where[Q, string](cols.Sender.Expression),
 		FromEmail:        psql.Where[Q, string](cols.FromEmail.Expression),
 		FromName:         psql.Where[Q, string](cols.FromName.Expression),
 		PostmarkStreamID: psql.Where[Q, string](cols.PostmarkStreamID.Expression),

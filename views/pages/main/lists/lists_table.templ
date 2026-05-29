@@ -2,52 +2,51 @@ package listsview
 
 import (
 	"app/api/router"
-	appdb "app/db"
+	"app/db"
 	. "app/i18n"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"context"
+	"strconv"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	"github.com/templui/templui/components/table"
 )
 
-const CurrentListsTableID = "lists-table"
-
-func normalizeListsTableRequest(request globaltable.Request) globaltable.Request {
-	if request.FilterCriteria == nil {
-		request.FilterCriteria = map[string]string{}
+// listsCols beschreibt die Spalten der Email-Listen-Tabelle.
+// recipient_count ist eine abgeleitete Spalte (Subselect in QueryMailListRows).
+func listsCols(ctx context.Context) []datatable.ColumnDef {
+	return []datatable.ColumnDef{
+		{Field: "name", Label: Trl(ctx, L.Lists.ListName), Sortable: true, Filterable: true},
+		{Field: "description", Label: Trl(ctx, L.Lists.ListDescription), Sortable: true, Filterable: true},
+		{Field: "recipient_count", Label: Trl(ctx, L.Lists.NumberOfRecipients), Sortable: true, Class: "w-32"},
 	}
-	if request.Pagination.Page < 1 {
-		request.Pagination.Page = 1
-	}
-	if request.Pagination.Count <= 0 {
-		request.Pagination.Count = 50
-	}
-	if len(request.Pagination.Sorts) == 0 {
-		request.Pagination.Sorts = []globaltable.SortParam{{Field: "name", IsDesc: false}}
-	}
-	return request
 }
 
-func CurrentListsTableProps(lang string, rows []appdb.MailListTableRow, request globaltable.Request, total int64) globaltable.TableProps {
-	return globaltable.TableProps{
-		Lang:                NormalizeLang(lang),
-		ID:                  CurrentListsTableID,
-		Class:               "mt-6",
-		Endpoint:            router.Reverse(router.Lists.List),
-		Request:             normalizeListsTableRequest(request),
-		Total:               total,
-		Title:               TrLang(lang, L.Lists.AllEmailLists),
-		RowClickAccessorKey: "id",
-		RowClickURLPattern:  router.Reverse(router.Lists.Detail, "{value}"),
-		PageSizes:           []int{10, 25, 50, 100},
-		Columns: []globaltable.Column{
-			{AccessorKey: "id", Header: TrLang(lang, L.Users.Id), Kind: "id", Width: "5rem", MinWidth: "5rem", Sortable: true},
-			{AccessorKey: "name", Header: TrLang(lang, L.Lists.ListName), MinWidth: "14rem", Sortable: true},
-			{AccessorKey: "description", Header: TrLang(lang, L.Lists.ListDescription), MinWidth: "20rem"},
-			{AccessorKey: "recipientCount", Header: TrLang(lang, L.Lists.NumberOfRecipients), Width: "8rem", MinWidth: "8rem", Sortable: true},
+templ ListsTable(rows []db.MailListWithCount, state datatable.TableState) {
+	@datatable.Table(listsCols(ctx), state) {
+		for _, ml := range rows {
+			@listsRow(ml)
+		}
+	}
+}
+
+templ listsRow(ml db.MailListWithCount) {
+	{{ idStr := strconv.Itoa(int(ml.ID)) }}
+	@table.Row(table.RowProps{
+		Attributes: templ.Attributes{
+			"hx-get":      router.Reverse(router.Lists.Detail, idStr),
+			"hx-push-url": "true",
+			"class":       "cursor-pointer",
+			"data-row-id": idStr,
 		},
-		Data:         rows,
-		EmptyMessage: TrLang(lang, L.Lists.NoEmailListsYet),
+	}) {
+		@table.Cell(table.CellProps{Class: "font-medium"}) {
+			{ ml.Name }
+		}
+		@table.Cell() {
+			{ ml.Description }
+		}
+		@table.Cell() {
+			{ strconv.FormatInt(ml.RecipientCount, 10) }
+		}
 	}
-}
-
-templ CurrentListsTable(lang string, rows []appdb.MailListTableRow, request globaltable.Request, total int64) {
-	@globaltable.Table(CurrentListsTableProps(lang, rows, request, total))
 }

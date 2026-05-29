@@ -38,7 +38,7 @@ func (mods MailDomainModSlice) Apply(ctx context.Context, n *MailDomainTemplate)
 // all columns are optional and should be set by mods
 type MailDomainTemplate struct {
 	ID               func() int32
-	Domain           func() string
+	Sender           func() string
 	FromEmail        func() string
 	FromName         func() string
 	PostmarkStreamID func() string
@@ -94,9 +94,9 @@ func (o MailDomainTemplate) BuildSetter() *models.MailDomainSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
-	if o.Domain != nil {
-		val := o.Domain()
-		m.Domain = omit.From(val)
+	if o.Sender != nil {
+		val := o.Sender()
+		m.Sender = omit.From(val)
 	}
 	if o.FromEmail != nil {
 		val := o.FromEmail()
@@ -147,8 +147,8 @@ func (o MailDomainTemplate) Build() *models.MailDomain {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
-	if o.Domain != nil {
-		m.Domain = o.Domain()
+	if o.Sender != nil {
+		m.Sender = o.Sender()
 	}
 	if o.FromEmail != nil {
 		m.FromEmail = o.FromEmail()
@@ -188,9 +188,9 @@ func (o MailDomainTemplate) BuildMany(number int) models.MailDomainSlice {
 }
 
 func ensureCreatableMailDomain(m *models.MailDomainSetter) {
-	if !(m.Domain.IsValue()) {
+	if !(m.Sender.IsValue()) {
 		val := random_string(nil, "256")
-		m.Domain = omit.From(val)
+		m.Sender = omit.From(val)
 	}
 	if !(m.FromEmail.IsValue()) {
 		val := random_string(nil, "256")
@@ -334,7 +334,7 @@ type mailDomainMods struct{}
 func (m mailDomainMods) RandomizeAllColumns(f *faker.Faker) MailDomainMod {
 	return MailDomainModSlice{
 		MailDomainMods.RandomID(f),
-		MailDomainMods.RandomDomain(f),
+		MailDomainMods.RandomSender(f),
 		MailDomainMods.RandomFromEmail(f),
 		MailDomainMods.RandomFromName(f),
 		MailDomainMods.RandomPostmarkStreamID(f),
@@ -376,31 +376,31 @@ func (m mailDomainMods) RandomID(f *faker.Faker) MailDomainMod {
 }
 
 // Set the model columns to this value
-func (m mailDomainMods) Domain(val string) MailDomainMod {
+func (m mailDomainMods) Sender(val string) MailDomainMod {
 	return MailDomainModFunc(func(_ context.Context, o *MailDomainTemplate) {
-		o.Domain = func() string { return val }
+		o.Sender = func() string { return val }
 	})
 }
 
 // Set the Column from the function
-func (m mailDomainMods) DomainFunc(f func() string) MailDomainMod {
+func (m mailDomainMods) SenderFunc(f func() string) MailDomainMod {
 	return MailDomainModFunc(func(_ context.Context, o *MailDomainTemplate) {
-		o.Domain = f
+		o.Sender = f
 	})
 }
 
 // Clear any values for the column
-func (m mailDomainMods) UnsetDomain() MailDomainMod {
+func (m mailDomainMods) UnsetSender() MailDomainMod {
 	return MailDomainModFunc(func(_ context.Context, o *MailDomainTemplate) {
-		o.Domain = nil
+		o.Sender = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m mailDomainMods) RandomDomain(f *faker.Faker) MailDomainMod {
+func (m mailDomainMods) RandomSender(f *faker.Faker) MailDomainMod {
 	return MailDomainModFunc(func(_ context.Context, o *MailDomainTemplate) {
-		o.Domain = func() string {
+		o.Sender = func() string {
 			return random_string(f, "256")
 		}
 	})

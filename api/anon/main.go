@@ -29,7 +29,8 @@ func CreateRoutes(rAnon *mw.AnonGroup, rAuth *mw.UserGroup) {
 
 	// Settings / Users (anon-Page-Gate, intern wird auf HasUser geprüft)
 	rAnon.AddNamedAnonRoute(router.Settings.Page, "/settings/", anonpages.SettingsPage, http.MethodGet)
-	rAnon.AddNamedAnonRoute(router.Users.List, "/users/", anonpages.UsersPage, http.MethodGet)
+	// GET + POST: GET = initiale Page, POST = datatable Filter/Sort/Page-Submit.
+	rAnon.AddNamedAnonRoute(router.Users.List, "/users/", anonpages.UsersPage, http.MethodGet, http.MethodPost)
 	rAnon.AddNamedAnonRoute(router.Users.Detail, "/users/:id/", anonpages.UserDetailPage, http.MethodGet)
 
 	// Auth (eingeloggt)

@@ -32,7 +32,7 @@ create unique index mail_list_ix_name on mail_list (lower(name));
 create table mail_domain
 (
     id                  SERIAL PRIMARY KEY NOT NULL,
-    domain              varchar(256) NOT NULL,
+    sender              varchar(256) NOT NULL,
     from_email          varchar(256) NOT NULL,
     from_name           varchar(256) NOT NULL DEFAULT '',
     postmark_stream_id  varchar(256) NOT NULL DEFAULT '',
@@ -41,10 +41,10 @@ create table mail_domain
     created_at          timestamp with time zone NOT NULL DEFAULT current_timestamp,
     updated_at          timestamp with time zone NULL
 );
-create unique index mail_domain_ix_domain on mail_domain (lower(domain));
+create unique index mail_domain_ix_sender on mail_domain (lower(sender));
 
-insert into mail_domain (domain, from_email, from_name, postmark_stream_id, is_active) values
-    ('nakami.de', 'noreply@nakami.de', 'Nakami Lounge', 'broadcast', true);
+insert into mail_domain (sender, from_email, from_name, postmark_stream_id, is_active) values
+    ('info@nakami.de', 'info@nakami.de', 'Nakami Lounge', 'broadcast', true);
 
 create table mailing
 (
@@ -61,8 +61,15 @@ create table mailing
     -- total_recipients gibt es bewusst nicht: die verknüpfte mail_list darf
     -- sich nach Anlegen des Mailings noch ändern, daher wird die Anzahl der
     -- Empfänger immer live aus mail_list_recipient ermittelt.
-    sent_count          integer NOT NULL DEFAULT 0,
-    failed_count        integer NOT NULL DEFAULT 0,
+
+    -- Postmark-Bulk-Tracking: bulk_request_id aus POST /email/bulk, die übrigen
+    -- Felder werden vom Cron-Poller über GET /email/bulk/{id} fortgeschrieben.
+    -- sent_count/failed_count entfallen — der Fortschritt kommt live aus Postmark.
+    postmark_bulk_request_id      varchar(256)     NOT NULL DEFAULT '',
+    postmark_status               varchar(32)      NOT NULL DEFAULT '',
+    postmark_submitted_at         timestamp with time zone NULL,
+    postmark_total_messages       integer          NOT NULL DEFAULT 0,
+    postmark_percentage_completed double precision NOT NULL DEFAULT 0,
 
     started_at          timestamp with time zone NULL,
     finished_at         timestamp with time zone NULL,

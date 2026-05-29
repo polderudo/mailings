@@ -6,18 +6,19 @@ import (
 	. "app/i18n"
 	"app/mq"
 	. "app/views/layout"
+
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 	breadcrumb "github.com/templui/templui/components/breadcrumb"
 )
 
-templ Mailings(user *mq.UserProfile, lang string, rows []db.MailingTableRow, request globaltable.Request, total int64) {
+templ Mailings(user *mq.UserProfile, lang string, rows []db.MailingWithMeta, state datatable.TableState) {
 	@UserLayout(user, lang, Trl(ctx, L.Mailings.AllMailings)) {
-		@MailingsListPage(lang, rows, request, total)
+		@MailingsListPage(lang, rows, state)
 	}
 }
 
-templ MailingsListPage(lang string, rows []db.MailingTableRow, request globaltable.Request, total int64) {
+templ MailingsListPage(lang string, rows []db.MailingWithMeta, state datatable.TableState) {
 	<div class="space-y-4">
 		@MailingsBreadcrumbs(lang)
 		<div class="flex justify-end">
@@ -32,7 +33,7 @@ templ MailingsListPage(lang string, rows []db.MailingTableRow, request globaltab
 			})
 		</div>
 		<div>
-			@CurrentMailingsTable(lang, rows, request, total)
+			@MailingsTable(rows, state)
 		</div>
 	</div>
 }

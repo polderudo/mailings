@@ -37,22 +37,25 @@ func (mods MailingModSlice) Apply(ctx context.Context, n *MailingTemplate) {
 // MailingTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type MailingTemplate struct {
-	ID              func() int32
-	Name            func() string
-	TemplateID      func() int32
-	ListID          func() int32
-	DomainID        func() int32
-	Status          func() string
-	SubjectSnapshot func() string
-	BodySnapshot    func() string
-	SentCount       func() int32
-	FailedCount     func() int32
-	StartedAt       func() null.Val[time.Time]
-	FinishedAt      func() null.Val[time.Time]
-	CreatedByUserID func() null.Val[int32]
-	UpdatedByUserID func() null.Val[int32]
-	CreatedAt       func() time.Time
-	UpdatedAt       func() null.Val[time.Time]
+	ID                          func() int32
+	Name                        func() string
+	TemplateID                  func() int32
+	ListID                      func() int32
+	DomainID                    func() int32
+	Status                      func() string
+	SubjectSnapshot             func() string
+	BodySnapshot                func() string
+	PostmarkBulkRequestID       func() string
+	PostmarkStatus              func() string
+	PostmarkSubmittedAt         func() null.Val[time.Time]
+	PostmarkTotalMessages       func() int32
+	PostmarkPercentageCompleted func() float64
+	StartedAt                   func() null.Val[time.Time]
+	FinishedAt                  func() null.Val[time.Time]
+	CreatedByUserID             func() null.Val[int32]
+	UpdatedByUserID             func() null.Val[int32]
+	CreatedAt                   func() time.Time
+	UpdatedAt                   func() null.Val[time.Time]
 
 	r mailingR
 	f *Factory
@@ -185,13 +188,25 @@ func (o MailingTemplate) BuildSetter() *models.MailingSetter {
 		val := o.BodySnapshot()
 		m.BodySnapshot = omit.From(val)
 	}
-	if o.SentCount != nil {
-		val := o.SentCount()
-		m.SentCount = omit.From(val)
+	if o.PostmarkBulkRequestID != nil {
+		val := o.PostmarkBulkRequestID()
+		m.PostmarkBulkRequestID = omit.From(val)
 	}
-	if o.FailedCount != nil {
-		val := o.FailedCount()
-		m.FailedCount = omit.From(val)
+	if o.PostmarkStatus != nil {
+		val := o.PostmarkStatus()
+		m.PostmarkStatus = omit.From(val)
+	}
+	if o.PostmarkSubmittedAt != nil {
+		val := o.PostmarkSubmittedAt()
+		m.PostmarkSubmittedAt = omitnull.FromNull(val)
+	}
+	if o.PostmarkTotalMessages != nil {
+		val := o.PostmarkTotalMessages()
+		m.PostmarkTotalMessages = omit.From(val)
+	}
+	if o.PostmarkPercentageCompleted != nil {
+		val := o.PostmarkPercentageCompleted()
+		m.PostmarkPercentageCompleted = omit.From(val)
 	}
 	if o.StartedAt != nil {
 		val := o.StartedAt()
@@ -263,11 +278,20 @@ func (o MailingTemplate) Build() *models.Mailing {
 	if o.BodySnapshot != nil {
 		m.BodySnapshot = o.BodySnapshot()
 	}
-	if o.SentCount != nil {
-		m.SentCount = o.SentCount()
+	if o.PostmarkBulkRequestID != nil {
+		m.PostmarkBulkRequestID = o.PostmarkBulkRequestID()
 	}
-	if o.FailedCount != nil {
-		m.FailedCount = o.FailedCount()
+	if o.PostmarkStatus != nil {
+		m.PostmarkStatus = o.PostmarkStatus()
+	}
+	if o.PostmarkSubmittedAt != nil {
+		m.PostmarkSubmittedAt = o.PostmarkSubmittedAt()
+	}
+	if o.PostmarkTotalMessages != nil {
+		m.PostmarkTotalMessages = o.PostmarkTotalMessages()
+	}
+	if o.PostmarkPercentageCompleted != nil {
+		m.PostmarkPercentageCompleted = o.PostmarkPercentageCompleted()
 	}
 	if o.StartedAt != nil {
 		m.StartedAt = o.StartedAt()
@@ -596,8 +620,11 @@ func (m mailingMods) RandomizeAllColumns(f *faker.Faker) MailingMod {
 		MailingMods.RandomStatus(f),
 		MailingMods.RandomSubjectSnapshot(f),
 		MailingMods.RandomBodySnapshot(f),
-		MailingMods.RandomSentCount(f),
-		MailingMods.RandomFailedCount(f),
+		MailingMods.RandomPostmarkBulkRequestID(f),
+		MailingMods.RandomPostmarkStatus(f),
+		MailingMods.RandomPostmarkSubmittedAt(f),
+		MailingMods.RandomPostmarkTotalMessages(f),
+		MailingMods.RandomPostmarkPercentageCompleted(f),
 		MailingMods.RandomStartedAt(f),
 		MailingMods.RandomFinishedAt(f),
 		MailingMods.RandomCreatedByUserID(f),
@@ -856,63 +883,178 @@ func (m mailingMods) RandomBodySnapshot(f *faker.Faker) MailingMod {
 }
 
 // Set the model columns to this value
-func (m mailingMods) SentCount(val int32) MailingMod {
+func (m mailingMods) PostmarkBulkRequestID(val string) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.SentCount = func() int32 { return val }
+		o.PostmarkBulkRequestID = func() string { return val }
 	})
 }
 
 // Set the Column from the function
-func (m mailingMods) SentCountFunc(f func() int32) MailingMod {
+func (m mailingMods) PostmarkBulkRequestIDFunc(f func() string) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.SentCount = f
+		o.PostmarkBulkRequestID = f
 	})
 }
 
 // Clear any values for the column
-func (m mailingMods) UnsetSentCount() MailingMod {
+func (m mailingMods) UnsetPostmarkBulkRequestID() MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.SentCount = nil
+		o.PostmarkBulkRequestID = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m mailingMods) RandomSentCount(f *faker.Faker) MailingMod {
+func (m mailingMods) RandomPostmarkBulkRequestID(f *faker.Faker) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.SentCount = func() int32 {
+		o.PostmarkBulkRequestID = func() string {
+			return random_string(f, "256")
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) PostmarkStatus(val string) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatus = func() string { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) PostmarkStatusFunc(f func() string) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatus = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetPostmarkStatus() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatus = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailingMods) RandomPostmarkStatus(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatus = func() string {
+			return random_string(f, "32")
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) PostmarkSubmittedAt(val null.Val[time.Time]) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkSubmittedAt = func() null.Val[time.Time] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) PostmarkSubmittedAtFunc(f func() null.Val[time.Time]) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkSubmittedAt = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetPostmarkSubmittedAt() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkSubmittedAt = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m mailingMods) RandomPostmarkSubmittedAt(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkSubmittedAt = func() null.Val[time.Time] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_time_Time(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m mailingMods) RandomPostmarkSubmittedAtNotNull(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkSubmittedAt = func() null.Val[time.Time] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_time_Time(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) PostmarkTotalMessages(val int32) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkTotalMessages = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) PostmarkTotalMessagesFunc(f func() int32) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkTotalMessages = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetPostmarkTotalMessages() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkTotalMessages = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailingMods) RandomPostmarkTotalMessages(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkTotalMessages = func() int32 {
 			return random_int32(f)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m mailingMods) FailedCount(val int32) MailingMod {
+func (m mailingMods) PostmarkPercentageCompleted(val float64) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.FailedCount = func() int32 { return val }
+		o.PostmarkPercentageCompleted = func() float64 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m mailingMods) FailedCountFunc(f func() int32) MailingMod {
+func (m mailingMods) PostmarkPercentageCompletedFunc(f func() float64) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.FailedCount = f
+		o.PostmarkPercentageCompleted = f
 	})
 }
 
 // Clear any values for the column
-func (m mailingMods) UnsetFailedCount() MailingMod {
+func (m mailingMods) UnsetPostmarkPercentageCompleted() MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.FailedCount = nil
+		o.PostmarkPercentageCompleted = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m mailingMods) RandomFailedCount(f *faker.Faker) MailingMod {
+func (m mailingMods) RandomPostmarkPercentageCompleted(f *faker.Faker) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
-		o.FailedCount = func() int32 {
-			return random_int32(f)
+		o.PostmarkPercentageCompleted = func() float64 {
+			return random_float64(f)
 		}
 	})
 }

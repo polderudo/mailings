@@ -2,56 +2,53 @@ package mailingsview
 
 import (
 	"app/api/router"
-	appdb "app/db"
+	"app/db"
 	. "app/i18n"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"context"
+	"strconv"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	"github.com/templui/templui/components/table"
 )
 
-const CurrentMailingsTableID = "mailings-table"
-
-func normalizeMailingsTableRequest(request globaltable.Request) globaltable.Request {
-	if request.FilterCriteria == nil {
-		request.FilterCriteria = map[string]string{}
+func mailingsCols(ctx context.Context) []datatable.ColumnDef {
+	return []datatable.ColumnDef{
+		{Field: "name", Label: Trl(ctx, L.Mailings.MailingName), Sortable: true, Filterable: true},
+		{Field: "template_name", Label: Trl(ctx, L.Mailings.Template)},
+		{Field: "list_name", Label: Trl(ctx, L.Mailings.EmailList)},
+		{Field: "domain_name", Label: Trl(ctx, L.Mailings.Sender)},
+		{Field: "status", Label: Trl(ctx, L.Mailings.MailingStatus), Sortable: true, Filterable: true, Class: "w-32"},
+		{Field: "recipient_count", Label: Trl(ctx, L.Mailings.TotalRecipients), Class: "w-24"},
+		{Field: "postmark_percentage_completed", Label: Trl(ctx, L.Mailings.Progress), Sortable: true, Class: "w-24"},
 	}
-	if request.Pagination.Page < 1 {
-		request.Pagination.Page = 1
-	}
-	if request.Pagination.Count <= 0 {
-		request.Pagination.Count = 50
-	}
-	if len(request.Pagination.Sorts) == 0 {
-		request.Pagination.Sorts = []globaltable.SortParam{{Field: "createdAt", IsDesc: true}}
-	}
-	return request
 }
 
-func CurrentMailingsTableProps(lang string, rows []appdb.MailingTableRow, request globaltable.Request, total int64) globaltable.TableProps {
-	return globaltable.TableProps{
-		Lang:                NormalizeLang(lang),
-		ID:                  CurrentMailingsTableID,
-		Class:               "mt-6",
-		Endpoint:            router.Reverse(router.Mailings.List),
-		Request:             normalizeMailingsTableRequest(request),
-		Total:               total,
-		Title:               TrLang(lang, L.Mailings.AllMailings),
-		RowClickAccessorKey: "id",
-		RowClickURLPattern:  router.Reverse(router.Mailings.Detail, "{value}"),
-		PageSizes:           []int{10, 25, 50, 100},
-		Columns: []globaltable.Column{
-			{AccessorKey: "id", Header: TrLang(lang, L.Users.Id), Kind: "id", Width: "5rem", MinWidth: "5rem", Sortable: true},
-			{AccessorKey: "name", Header: TrLang(lang, L.Mailings.MailingName), MinWidth: "14rem", Sortable: true},
-			{AccessorKey: "templateName", Header: TrLang(lang, L.Mailings.Template), MinWidth: "12rem"},
-			{AccessorKey: "listName", Header: TrLang(lang, L.Mailings.EmailList), MinWidth: "12rem"},
-			{AccessorKey: "domain", Header: TrLang(lang, L.Mailings.Domain), MinWidth: "10rem"},
-			{AccessorKey: "status", Header: TrLang(lang, L.Mailings.MailingStatus), Width: "8rem", MinWidth: "8rem", Sortable: true},
-			{AccessorKey: "recipientCount", Header: TrLang(lang, L.Mailings.TotalRecipients), Width: "8rem", MinWidth: "8rem"},
-			{AccessorKey: "sentCount", Header: TrLang(lang, L.Mailings.SentCount), Width: "6rem", MinWidth: "6rem"},
+templ MailingsTable(rows []db.MailingWithMeta, state datatable.TableState) {
+	@datatable.Table(mailingsCols(ctx), state) {
+		for _, m := range rows {
+			@mailingsRow(m)
+		}
+	}
+}
+
+templ mailingsRow(m db.MailingWithMeta) {
+	{{ idStr := strconv.Itoa(int(m.ID)) }}
+	@table.Row(table.RowProps{
+		Attributes: templ.Attributes{
+			"hx-get":      router.Reverse(router.Mailings.Detail, idStr),
+			"hx-push-url": "true",
+			"class":       "cursor-pointer",
+			"data-row-id": idStr,
 		},
-		Data:         rows,
-		EmptyMessage: TrLang(lang, L.Mailings.NoMailingsYet),
+	}) {
+		@table.Cell(table.CellProps{Class: "font-medium"}) {
+			{ m.Name }
+		}
+		@table.Cell() { { m.TemplateName } }
+		@table.Cell() { { m.ListName } }
+		@table.Cell() { { m.DomainName } }
+		@table.Cell() { { m.Status } }
+		@table.Cell() { { strconv.FormatInt(m.RecipientCount, 10) } }
+		@table.Cell() { { strconv.FormatFloat(m.PostmarkPercentageCompleted, 'f', 0, 64) }% }
 	}
-}
-
-templ CurrentMailingsTable(lang string, rows []appdb.MailingTableRow, request globaltable.Request, total int64) {
-	@globaltable.Table(CurrentMailingsTableProps(lang, rows, request, total))
 }

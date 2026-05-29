@@ -1,3 +1,6 @@
 [submodule "ui-components"]
 	path = ui-components
 	url = https://github.com/nakami-lounge-GmbH/ui-components.git
+[submodule "mesa2"]
+	path = mesa2
+	url = https://github.com/nakami-lounge-GmbH/mesa2

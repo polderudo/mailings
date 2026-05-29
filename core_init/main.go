@@ -3,6 +3,7 @@ package core_init
 import (
 	"app/auth"
 	coreConf "app/conf"
+	"app/core/cron"
 	"app/db"
 	"app/ilog"
 	"app/templates"
@@ -29,6 +30,10 @@ func InitializeCore(rbacModel string) error {
 
 	if err := auth.InitAuth(db.StdDB, rbacModel); err != nil {
 		log.Fatalf("Error initializing Auth: %v\n", err)
+	}
+
+	if err := cron.InitCron(); err != nil {
+		log.Fatalf("Error initializing cron: %v\n", err)
 	}
 
 	return nil

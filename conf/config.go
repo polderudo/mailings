@@ -32,6 +32,7 @@ type Config struct {
 
 	DB         Database
 	MailConfig MailConfig
+	Postmark   Postmark
 
 	WebURL WebLink
 

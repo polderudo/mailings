@@ -2,6 +2,7 @@ package api
 
 import (
 	"app/api/router"
+	"app/conf"
 	listsapi "app/core/lists/api"
 	"app/db"
 	"app/i18n"
@@ -19,35 +20,34 @@ import (
 
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
 
 func (m *api) MailingsPage(c *mw.UserContext) error {
-	request := globaltable.ReadRequest(c.Request(), mailingsview.CurrentMailingsTableID)
-	sorts := make(db.SortParams, len(request.Pagination.Sorts))
-	for i, s := range request.Pagination.Sorts {
-		sorts[i] = db.SortParam{Field: s.Field, IsDesc: s.IsDesc}
-	}
-	rows, total, err := db.LoadMailingTableRows(c.Request().Context(), db.FilterRequest[map[string]string]{
-		P: db.PaginationData{
-			Page:  request.Pagination.Page,
-			Count: request.Pagination.Count,
-			Sorts: sorts,
-		},
-		FilterCriteria: request.FilterCriteria,
+	bind := db.BindPaginated(c, 50, func(b *db.FilterBinder, criteria *db.MailingCriteria) {
+		b.String("name", &criteria.Name)
+		b.String("status", &criteria.Status)
 	})
+	rows, total, err := db.QueryMailingRows(c.Request().Context(), bind.Pagination, bind.Criteria)
 	if err != nil {
 		return err
 	}
-	if isHXRequest(c) {
-		if c.Request().Header.Get("HX-Target") == mailingsview.CurrentMailingsTableID {
-			return views.Render(c, mailingsview.CurrentMailingsTable(c.Lang, rows, request, total))
-		}
-		return views.Render(c, mailingsview.MailingsListPage(c.Lang, rows, request, total))
+	state := datatable.TableState{
+		Page:      bind.Pagination.Page,
+		Count:     bind.Pagination.Count,
+		Total:     total,
+		SortField: bind.SortField,
+		SortDesc:  bind.SortDesc,
+		Filters:   bind.Filters,
+		Endpoint:  router.Reverse(router.Mailings.List),
+		Target:    "#layout-content-body",
 	}
-	return views.Render(c, mailingsview.Mailings(c.UserProfile, c.Lang, rows, request, total))
+	if isHXRequest(c) {
+		return views.Render(c, mailingsview.MailingsListPage(c.Lang, rows, state))
+	}
+	return views.Render(c, mailingsview.Mailings(c.UserProfile, c.Lang, rows, state))
 }
 
 func (m *api) MailingNewPage(c *mw.UserContext) error {
@@ -67,7 +67,7 @@ func (m *api) MailingNewPage(c *mw.UserContext) error {
 	}
 	domains, err := mq.MailDomains.Query(
 		sm.Where(mq.MailDomains.Columns.IsActive.EQ(psql.Arg(true))),
-		sm.OrderBy(mq.MailDomains.Columns.Domain),
+		sm.OrderBy(mq.MailDomains.Columns.Sender),
 	).All(ctx, db.DBob)
 	if err != nil {
 		return err
@@ -97,6 +97,10 @@ func (m *api) MailingDetailPage(c *mw.UserContext) error {
 	if err != nil {
 		return err
 	}
+	// Live-Polling während des Versands fragt nur das Info-Panel an (?partial=1).
+	if c.QueryParam("partial") == "1" {
+		return views.Render(c, mailingsview.MailingInfo(c.Lang, data))
+	}
 	if isHXRequest(c) {
 		return views.Render(c, mailingsview.MailingDetailPage(c.Lang, data))
 	}
@@ -112,7 +116,7 @@ func loadMailingDetail(ctx context.Context, mailing *mq.Mailing) (mailingsview.M
 		data.ListName = l.Name
 	}
 	if d, err := mq.FindMailDomain(ctx, db.DBob, mailing.DomainID); err == nil && d != nil {
-		data.Domain = d.Domain
+		data.Domain = d.Sender
 	}
 	// Recipient-Count wird immer live aus mail_list_recipient ermittelt — die
 	// Liste darf sich nach Anlegen des Mailings noch ändern, daher steht die
@@ -135,7 +139,7 @@ func (m *api) MailingCreate(c *mw.UserContext) error {
 	}
 	domainID, err := strconv.Atoi(c.FormValue("domain_id"))
 	if err != nil || domainID == 0 {
-		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), i18n.TrLang(c.Lang, i18n.L.Mailings.PleasePickADomain))
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), i18n.TrLang(c.Lang, i18n.L.Mailings.PleasePickASender))
 	}
 
 	ctx := context.Background()
@@ -183,13 +187,21 @@ func (m *api) MailingStart(c *mw.UserContext) error {
 		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), "Domain not found")
 	}
 
-	// TODO: postmark server token aus conf.C.Postmark.ServerToken laden
-	client := postmark.NewClient("")
-	go func() {
-		if err := client.SendBroadcast(context.Background(), mailing.ID); err != nil {
-			slog.Error("send broadcast", "err", err, "mailing", mailing.ID)
-		}
-	}()
+	// Synchroner Bulk-POST: gibt schnell die bulk-request-id zurück, das UI zeigt
+	// danach direkt status=sending + die Postmark-Daten. Den weiteren Fortschritt
+	// zieht der Cron-Poller über GET /email/bulk/{id} nach.
+	client := postmark.NewClient(conf.C.Postmark.ServerToken)
+	if err := client.SendBulk(ctx, mailing.ID); err != nil {
+		slog.Error("postmark send bulk", "err", err, "mailing", mailing.ID)
+		mailing, _ = mq.FindMailing(ctx, db.DBob, int32(id))
+		data, _ := loadMailingDetail(ctx, mailing)
+		return views.RenderWithToast(c,
+			mailingsview.MailingInfo(c.Lang, data),
+			"error",
+			i18n.TrLang(c.Lang, i18n.L.Ui.Error),
+			i18n.TrLang(c.Lang, i18n.L.Mailings.MailingFailed),
+		)
+	}
 
 	mailing, _ = mq.FindMailing(ctx, db.DBob, int32(id))
 	data, err := loadMailingDetail(ctx, mailing)

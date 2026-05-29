@@ -1,0 +1,62 @@
+package listsview
+
+import (
+	. "app/i18n"
+	"app/mq"
+	"context"
+	"strconv"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	tuibutton "github.com/templui/templui/components/button"
+	tuiicon "github.com/templui/templui/components/icon"
+	"github.com/templui/templui/components/table"
+)
+
+// recipientsCols sind die Spalten der paginierten Empfänger-Tabelle.
+// Filter/Sort werden serverseitig in QueryMailListRecipientRows umgesetzt.
+func recipientsCols(ctx context.Context) []datatable.ColumnDef {
+	return []datatable.ColumnDef{
+		{Field: "email", Label: Trl(ctx, L.Auth.Email), Sortable: true, Filterable: true},
+		{Field: "forename", Label: Trl(ctx, L.Auth.FirstName), Sortable: true, Filterable: true},
+		{Field: "lastname", Label: Trl(ctx, L.Auth.LastName), Sortable: true, Filterable: true},
+		{Field: "_actions", Label: "", Class: "w-10"},
+	}
+}
+
+// ListRecipientsTable rendert die paginierte Empfänger-Tabelle.
+// Wird sowohl initial (in ListRecipientsPanel) als auch als HTMX-POST-Response
+// vom datatable-Form ausgeliefert — daher: nur die Tabelle, kein Panel-Wrapper.
+templ ListRecipientsTable(rows []*mq.MailListRecipient, state datatable.TableState) {
+	@datatable.Table(recipientsCols(ctx), state) {
+		for _, r := range rows {
+			@listRecipientsRow(r)
+		}
+	}
+}
+
+templ listRecipientsRow(r *mq.MailListRecipient) {
+	@table.Row(table.RowProps{
+		Attributes: templ.Attributes{
+			"data-row-id": strconv.Itoa(int(r.ID)),
+		},
+	}) {
+		@table.Cell() { { r.Email } }
+		@table.Cell() { { r.Forename } }
+		@table.Cell() { { r.Lastname } }
+		@table.Cell(table.CellProps{Class: "text-right"}) {
+			@tuibutton.Button(tuibutton.Props{
+				Size:    tuibutton.SizeIcon,
+				Variant: tuibutton.VariantGhost,
+				Class:   "size-7 text-muted-foreground hover:text-destructive",
+				Attributes: templ.Attributes{
+					"type":       "button",
+					"aria-label": Trl(ctx, L.Lists.DeleteRecipient),
+					"title":      Trl(ctx, L.Lists.DeleteRecipient),
+					"@click":     "pendingRecId = " + strconv.Itoa(int(r.ID)) + "; pendingRecEmail = " + alpineString(r.Email) + "; window.tui.dialog.open('confirm-delete-recipient')",
+				},
+			}) {
+				@tuiicon.Minus(tuiicon.Props{Class: "size-4"})
+			}
+		}
+	}
+}

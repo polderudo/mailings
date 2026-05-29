@@ -40,6 +40,12 @@ MailConfig:
   UseSSL: false
   NoAuth: true
 
+Postmark:
+  ServerToken: ""                            # TODO: echter Postmark Server-Token eintragen
+  ApiBaseURL: "https://api.postmarkapp.com"
+  TrackOpens: true
+  TrackLinks: "HtmlAndText"                   # None | HtmlAndText | HtmlOnly | TextOnly
+
 LogWebToConsole: true
 LogWebToDebug: true
 Logging:

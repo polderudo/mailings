@@ -192,7 +192,7 @@ func (f *Factory) fromExistingMailDomain(ctx context.Context, m *models.MailDoma
 	o := &MailDomainTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
-	o.Domain = func() string { return m.Domain }
+	o.Sender = func() string { return m.Sender }
 	o.FromEmail = func() string { return m.FromEmail }
 	o.FromName = func() string { return m.FromName }
 	o.PostmarkStreamID = func() string { return m.PostmarkStreamID }
@@ -411,8 +411,11 @@ func (f *Factory) fromExistingMailing(ctx context.Context, m *models.Mailing) *M
 	o.Status = func() string { return m.Status }
 	o.SubjectSnapshot = func() string { return m.SubjectSnapshot }
 	o.BodySnapshot = func() string { return m.BodySnapshot }
-	o.SentCount = func() int32 { return m.SentCount }
-	o.FailedCount = func() int32 { return m.FailedCount }
+	o.PostmarkBulkRequestID = func() string { return m.PostmarkBulkRequestID }
+	o.PostmarkStatus = func() string { return m.PostmarkStatus }
+	o.PostmarkSubmittedAt = func() null.Val[time.Time] { return m.PostmarkSubmittedAt }
+	o.PostmarkTotalMessages = func() int32 { return m.PostmarkTotalMessages }
+	o.PostmarkPercentageCompleted = func() float64 { return m.PostmarkPercentageCompleted }
 	o.StartedAt = func() null.Val[time.Time] { return m.StartedAt }
 	o.FinishedAt = func() null.Val[time.Time] { return m.FinishedAt }
 	o.CreatedByUserID = func() null.Val[int32] { return m.CreatedByUserID }

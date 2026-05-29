@@ -27,22 +27,25 @@ import (
 
 // Mailing is an object representing the database table.
 type Mailing struct {
-	ID              int32               `db:"id,pk" json:"id"`
-	Name            string              `db:"name" json:"name"`
-	TemplateID      int32               `db:"template_id" json:"template_id"`
-	ListID          int32               `db:"list_id" json:"list_id"`
-	DomainID        int32               `db:"domain_id" json:"domain_id"`
-	Status          string              `db:"status" json:"status"`
-	SubjectSnapshot string              `db:"subject_snapshot" json:"subject_snapshot"`
-	BodySnapshot    string              `db:"body_snapshot" json:"body_snapshot"`
-	SentCount       int32               `db:"sent_count" json:"sent_count"`
-	FailedCount     int32               `db:"failed_count" json:"failed_count"`
-	StartedAt       null.Val[time.Time] `db:"started_at" json:"started_at"`
-	FinishedAt      null.Val[time.Time] `db:"finished_at" json:"finished_at"`
-	CreatedByUserID null.Val[int32]     `db:"created_by_user_id" json:"created_by_user_id"`
-	UpdatedByUserID null.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
-	CreatedAt       time.Time           `db:"created_at" json:"created_at"`
-	UpdatedAt       null.Val[time.Time] `db:"updated_at" json:"updated_at"`
+	ID                          int32               `db:"id,pk" json:"id"`
+	Name                        string              `db:"name" json:"name"`
+	TemplateID                  int32               `db:"template_id" json:"template_id"`
+	ListID                      int32               `db:"list_id" json:"list_id"`
+	DomainID                    int32               `db:"domain_id" json:"domain_id"`
+	Status                      string              `db:"status" json:"status"`
+	SubjectSnapshot             string              `db:"subject_snapshot" json:"subject_snapshot"`
+	BodySnapshot                string              `db:"body_snapshot" json:"body_snapshot"`
+	PostmarkBulkRequestID       string              `db:"postmark_bulk_request_id" json:"postmark_bulk_request_id"`
+	PostmarkStatus              string              `db:"postmark_status" json:"postmark_status"`
+	PostmarkSubmittedAt         null.Val[time.Time] `db:"postmark_submitted_at" json:"postmark_submitted_at"`
+	PostmarkTotalMessages       int32               `db:"postmark_total_messages" json:"postmark_total_messages"`
+	PostmarkPercentageCompleted float64             `db:"postmark_percentage_completed" json:"postmark_percentage_completed"`
+	StartedAt                   null.Val[time.Time] `db:"started_at" json:"started_at"`
+	FinishedAt                  null.Val[time.Time] `db:"finished_at" json:"finished_at"`
+	CreatedByUserID             null.Val[int32]     `db:"created_by_user_id" json:"created_by_user_id"`
+	UpdatedByUserID             null.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
+	CreatedAt                   time.Time           `db:"created_at" json:"created_at"`
+	UpdatedAt                   null.Val[time.Time] `db:"updated_at" json:"updated_at"`
 
 	R mailingR `db:"-" json:"R"`
 
@@ -85,7 +88,7 @@ type mailingRLoaded struct {
 
 func buildMailingColumns(tableName string) mailingColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "sent_count", "failed_count", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
+		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "postmark_bulk_request_id", "postmark_status", "postmark_submitted_at", "postmark_total_messages", "postmark_percentage_completed", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
 	)
 
 	if tableName != "" {
@@ -93,46 +96,52 @@ func buildMailingColumns(tableName string) mailingColumns {
 	}
 
 	return mailingColumns{
-		ColumnsExpr:     columnsExpr,
-		tableAlias:      tableName,
-		ID:              buildMailingColumn(tableName, "id"),
-		Name:            buildMailingColumn(tableName, "name"),
-		TemplateID:      buildMailingColumn(tableName, "template_id"),
-		ListID:          buildMailingColumn(tableName, "list_id"),
-		DomainID:        buildMailingColumn(tableName, "domain_id"),
-		Status:          buildMailingColumn(tableName, "status"),
-		SubjectSnapshot: buildMailingColumn(tableName, "subject_snapshot"),
-		BodySnapshot:    buildMailingColumn(tableName, "body_snapshot"),
-		SentCount:       buildMailingColumn(tableName, "sent_count"),
-		FailedCount:     buildMailingColumn(tableName, "failed_count"),
-		StartedAt:       buildMailingColumn(tableName, "started_at"),
-		FinishedAt:      buildMailingColumn(tableName, "finished_at"),
-		CreatedByUserID: buildMailingColumn(tableName, "created_by_user_id"),
-		UpdatedByUserID: buildMailingColumn(tableName, "updated_by_user_id"),
-		CreatedAt:       buildMailingColumn(tableName, "created_at"),
-		UpdatedAt:       buildMailingColumn(tableName, "updated_at"),
+		ColumnsExpr:                 columnsExpr,
+		tableAlias:                  tableName,
+		ID:                          buildMailingColumn(tableName, "id"),
+		Name:                        buildMailingColumn(tableName, "name"),
+		TemplateID:                  buildMailingColumn(tableName, "template_id"),
+		ListID:                      buildMailingColumn(tableName, "list_id"),
+		DomainID:                    buildMailingColumn(tableName, "domain_id"),
+		Status:                      buildMailingColumn(tableName, "status"),
+		SubjectSnapshot:             buildMailingColumn(tableName, "subject_snapshot"),
+		BodySnapshot:                buildMailingColumn(tableName, "body_snapshot"),
+		PostmarkBulkRequestID:       buildMailingColumn(tableName, "postmark_bulk_request_id"),
+		PostmarkStatus:              buildMailingColumn(tableName, "postmark_status"),
+		PostmarkSubmittedAt:         buildMailingColumn(tableName, "postmark_submitted_at"),
+		PostmarkTotalMessages:       buildMailingColumn(tableName, "postmark_total_messages"),
+		PostmarkPercentageCompleted: buildMailingColumn(tableName, "postmark_percentage_completed"),
+		StartedAt:                   buildMailingColumn(tableName, "started_at"),
+		FinishedAt:                  buildMailingColumn(tableName, "finished_at"),
+		CreatedByUserID:             buildMailingColumn(tableName, "created_by_user_id"),
+		UpdatedByUserID:             buildMailingColumn(tableName, "updated_by_user_id"),
+		CreatedAt:                   buildMailingColumn(tableName, "created_at"),
+		UpdatedAt:                   buildMailingColumn(tableName, "updated_at"),
 	}
 }
 
 type mailingColumns struct {
 	expr.ColumnsExpr
-	tableAlias      string
-	ID              mailingColumn
-	Name            mailingColumn
-	TemplateID      mailingColumn
-	ListID          mailingColumn
-	DomainID        mailingColumn
-	Status          mailingColumn
-	SubjectSnapshot mailingColumn
-	BodySnapshot    mailingColumn
-	SentCount       mailingColumn
-	FailedCount     mailingColumn
-	StartedAt       mailingColumn
-	FinishedAt      mailingColumn
-	CreatedByUserID mailingColumn
-	UpdatedByUserID mailingColumn
-	CreatedAt       mailingColumn
-	UpdatedAt       mailingColumn
+	tableAlias                  string
+	ID                          mailingColumn
+	Name                        mailingColumn
+	TemplateID                  mailingColumn
+	ListID                      mailingColumn
+	DomainID                    mailingColumn
+	Status                      mailingColumn
+	SubjectSnapshot             mailingColumn
+	BodySnapshot                mailingColumn
+	PostmarkBulkRequestID       mailingColumn
+	PostmarkStatus              mailingColumn
+	PostmarkSubmittedAt         mailingColumn
+	PostmarkTotalMessages       mailingColumn
+	PostmarkPercentageCompleted mailingColumn
+	StartedAt                   mailingColumn
+	FinishedAt                  mailingColumn
+	CreatedByUserID             mailingColumn
+	UpdatedByUserID             mailingColumn
+	CreatedAt                   mailingColumn
+	UpdatedAt                   mailingColumn
 }
 
 // Alias returns the current table alias for the columns set.
@@ -178,26 +187,29 @@ func (c mailingColumn) ShouldOmitParens() bool {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type MailingSetter struct {
-	ID              omit.Val[int32]         `db:"id,pk" json:"id"`
-	Name            omit.Val[string]        `db:"name" json:"name"`
-	TemplateID      omit.Val[int32]         `db:"template_id" json:"template_id"`
-	ListID          omit.Val[int32]         `db:"list_id" json:"list_id"`
-	DomainID        omit.Val[int32]         `db:"domain_id" json:"domain_id"`
-	Status          omit.Val[string]        `db:"status" json:"status"`
-	SubjectSnapshot omit.Val[string]        `db:"subject_snapshot" json:"subject_snapshot"`
-	BodySnapshot    omit.Val[string]        `db:"body_snapshot" json:"body_snapshot"`
-	SentCount       omit.Val[int32]         `db:"sent_count" json:"sent_count"`
-	FailedCount     omit.Val[int32]         `db:"failed_count" json:"failed_count"`
-	StartedAt       omitnull.Val[time.Time] `db:"started_at" json:"started_at"`
-	FinishedAt      omitnull.Val[time.Time] `db:"finished_at" json:"finished_at"`
-	CreatedByUserID omitnull.Val[int32]     `db:"created_by_user_id" json:"created_by_user_id"`
-	UpdatedByUserID omitnull.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
-	CreatedAt       omit.Val[time.Time]     `db:"created_at" json:"created_at"`
-	UpdatedAt       omitnull.Val[time.Time] `db:"updated_at" json:"updated_at"`
+	ID                          omit.Val[int32]         `db:"id,pk" json:"id"`
+	Name                        omit.Val[string]        `db:"name" json:"name"`
+	TemplateID                  omit.Val[int32]         `db:"template_id" json:"template_id"`
+	ListID                      omit.Val[int32]         `db:"list_id" json:"list_id"`
+	DomainID                    omit.Val[int32]         `db:"domain_id" json:"domain_id"`
+	Status                      omit.Val[string]        `db:"status" json:"status"`
+	SubjectSnapshot             omit.Val[string]        `db:"subject_snapshot" json:"subject_snapshot"`
+	BodySnapshot                omit.Val[string]        `db:"body_snapshot" json:"body_snapshot"`
+	PostmarkBulkRequestID       omit.Val[string]        `db:"postmark_bulk_request_id" json:"postmark_bulk_request_id"`
+	PostmarkStatus              omit.Val[string]        `db:"postmark_status" json:"postmark_status"`
+	PostmarkSubmittedAt         omitnull.Val[time.Time] `db:"postmark_submitted_at" json:"postmark_submitted_at"`
+	PostmarkTotalMessages       omit.Val[int32]         `db:"postmark_total_messages" json:"postmark_total_messages"`
+	PostmarkPercentageCompleted omit.Val[float64]       `db:"postmark_percentage_completed" json:"postmark_percentage_completed"`
+	StartedAt                   omitnull.Val[time.Time] `db:"started_at" json:"started_at"`
+	FinishedAt                  omitnull.Val[time.Time] `db:"finished_at" json:"finished_at"`
+	CreatedByUserID             omitnull.Val[int32]     `db:"created_by_user_id" json:"created_by_user_id"`
+	UpdatedByUserID             omitnull.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
+	CreatedAt                   omit.Val[time.Time]     `db:"created_at" json:"created_at"`
+	UpdatedAt                   omitnull.Val[time.Time] `db:"updated_at" json:"updated_at"`
 }
 
 func (s MailingSetter) SetColumns() []string {
-	vals := make([]string, 0, 16)
+	vals := make([]string, 0, 19)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -222,11 +234,20 @@ func (s MailingSetter) SetColumns() []string {
 	if s.BodySnapshot.IsValue() {
 		vals = append(vals, "body_snapshot")
 	}
-	if s.SentCount.IsValue() {
-		vals = append(vals, "sent_count")
+	if s.PostmarkBulkRequestID.IsValue() {
+		vals = append(vals, "postmark_bulk_request_id")
 	}
-	if s.FailedCount.IsValue() {
-		vals = append(vals, "failed_count")
+	if s.PostmarkStatus.IsValue() {
+		vals = append(vals, "postmark_status")
+	}
+	if !s.PostmarkSubmittedAt.IsUnset() {
+		vals = append(vals, "postmark_submitted_at")
+	}
+	if s.PostmarkTotalMessages.IsValue() {
+		vals = append(vals, "postmark_total_messages")
+	}
+	if s.PostmarkPercentageCompleted.IsValue() {
+		vals = append(vals, "postmark_percentage_completed")
 	}
 	if !s.StartedAt.IsUnset() {
 		vals = append(vals, "started_at")
@@ -274,11 +295,20 @@ func (s MailingSetter) Overwrite(t *Mailing) {
 	if s.BodySnapshot.IsValue() {
 		t.BodySnapshot = s.BodySnapshot.MustGet()
 	}
-	if s.SentCount.IsValue() {
-		t.SentCount = s.SentCount.MustGet()
+	if s.PostmarkBulkRequestID.IsValue() {
+		t.PostmarkBulkRequestID = s.PostmarkBulkRequestID.MustGet()
 	}
-	if s.FailedCount.IsValue() {
-		t.FailedCount = s.FailedCount.MustGet()
+	if s.PostmarkStatus.IsValue() {
+		t.PostmarkStatus = s.PostmarkStatus.MustGet()
+	}
+	if !s.PostmarkSubmittedAt.IsUnset() {
+		t.PostmarkSubmittedAt = s.PostmarkSubmittedAt.MustGetNull()
+	}
+	if s.PostmarkTotalMessages.IsValue() {
+		t.PostmarkTotalMessages = s.PostmarkTotalMessages.MustGet()
+	}
+	if s.PostmarkPercentageCompleted.IsValue() {
+		t.PostmarkPercentageCompleted = s.PostmarkPercentageCompleted.MustGet()
 	}
 	if !s.StartedAt.IsUnset() {
 		t.StartedAt = s.StartedAt.MustGetNull()
@@ -306,7 +336,7 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 16)
+		vals := make([]bob.Expression, 19)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -355,52 +385,70 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.SentCount.IsValue() {
-			vals[8] = psql.Arg(s.SentCount.MustGet())
+		if s.PostmarkBulkRequestID.IsValue() {
+			vals[8] = psql.Arg(s.PostmarkBulkRequestID.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.FailedCount.IsValue() {
-			vals[9] = psql.Arg(s.FailedCount.MustGet())
+		if s.PostmarkStatus.IsValue() {
+			vals[9] = psql.Arg(s.PostmarkStatus.MustGet())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if !s.StartedAt.IsUnset() {
-			vals[10] = psql.Arg(s.StartedAt.MustGetNull())
+		if !s.PostmarkSubmittedAt.IsUnset() {
+			vals[10] = psql.Arg(s.PostmarkSubmittedAt.MustGetNull())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FinishedAt.IsUnset() {
-			vals[11] = psql.Arg(s.FinishedAt.MustGetNull())
+		if s.PostmarkTotalMessages.IsValue() {
+			vals[11] = psql.Arg(s.PostmarkTotalMessages.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CreatedByUserID.IsUnset() {
-			vals[12] = psql.Arg(s.CreatedByUserID.MustGetNull())
+		if s.PostmarkPercentageCompleted.IsValue() {
+			vals[12] = psql.Arg(s.PostmarkPercentageCompleted.MustGet())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if !s.UpdatedByUserID.IsUnset() {
-			vals[13] = psql.Arg(s.UpdatedByUserID.MustGetNull())
+		if !s.StartedAt.IsUnset() {
+			vals[13] = psql.Arg(s.StartedAt.MustGetNull())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[14] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.FinishedAt.IsUnset() {
+			vals[14] = psql.Arg(s.FinishedAt.MustGetNull())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if !s.UpdatedAt.IsUnset() {
-			vals[15] = psql.Arg(s.UpdatedAt.MustGetNull())
+		if !s.CreatedByUserID.IsUnset() {
+			vals[15] = psql.Arg(s.CreatedByUserID.MustGetNull())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
+		}
+
+		if !s.UpdatedByUserID.IsUnset() {
+			vals[16] = psql.Arg(s.UpdatedByUserID.MustGetNull())
+		} else {
+			vals[16] = psql.Raw("DEFAULT")
+		}
+
+		if s.CreatedAt.IsValue() {
+			vals[17] = psql.Arg(s.CreatedAt.MustGet())
+		} else {
+			vals[17] = psql.Raw("DEFAULT")
+		}
+
+		if !s.UpdatedAt.IsUnset() {
+			vals[18] = psql.Arg(s.UpdatedAt.MustGetNull())
+		} else {
+			vals[18] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -412,7 +460,7 @@ func (s MailingSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 16)
+	exprs := make([]bob.Expression, 0, 19)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -470,17 +518,38 @@ func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.SentCount.IsValue() {
+	if s.PostmarkBulkRequestID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "sent_count")...),
-			psql.Arg(s.SentCount),
+			psql.Quote(append(prefix, "postmark_bulk_request_id")...),
+			psql.Arg(s.PostmarkBulkRequestID),
 		}})
 	}
 
-	if s.FailedCount.IsValue() {
+	if s.PostmarkStatus.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "failed_count")...),
-			psql.Arg(s.FailedCount),
+			psql.Quote(append(prefix, "postmark_status")...),
+			psql.Arg(s.PostmarkStatus),
+		}})
+	}
+
+	if !s.PostmarkSubmittedAt.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "postmark_submitted_at")...),
+			psql.Arg(s.PostmarkSubmittedAt),
+		}})
+	}
+
+	if s.PostmarkTotalMessages.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "postmark_total_messages")...),
+			psql.Arg(s.PostmarkTotalMessages),
+		}})
+	}
+
+	if s.PostmarkPercentageCompleted.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "postmark_percentage_completed")...),
+			psql.Arg(s.PostmarkPercentageCompleted),
 		}})
 	}
 
@@ -1220,22 +1289,25 @@ func (mailing0 *Mailing) AttachUpdatedByUserUserProfile(ctx context.Context, exe
 }
 
 type mailingWhere[Q psql.Filterable] struct {
-	ID              psql.WhereMod[Q, int32]
-	Name            psql.WhereMod[Q, string]
-	TemplateID      psql.WhereMod[Q, int32]
-	ListID          psql.WhereMod[Q, int32]
-	DomainID        psql.WhereMod[Q, int32]
-	Status          psql.WhereMod[Q, string]
-	SubjectSnapshot psql.WhereMod[Q, string]
-	BodySnapshot    psql.WhereMod[Q, string]
-	SentCount       psql.WhereMod[Q, int32]
-	FailedCount     psql.WhereMod[Q, int32]
-	StartedAt       psql.WhereNullMod[Q, time.Time]
-	FinishedAt      psql.WhereNullMod[Q, time.Time]
-	CreatedByUserID psql.WhereNullMod[Q, int32]
-	UpdatedByUserID psql.WhereNullMod[Q, int32]
-	CreatedAt       psql.WhereMod[Q, time.Time]
-	UpdatedAt       psql.WhereNullMod[Q, time.Time]
+	ID                          psql.WhereMod[Q, int32]
+	Name                        psql.WhereMod[Q, string]
+	TemplateID                  psql.WhereMod[Q, int32]
+	ListID                      psql.WhereMod[Q, int32]
+	DomainID                    psql.WhereMod[Q, int32]
+	Status                      psql.WhereMod[Q, string]
+	SubjectSnapshot             psql.WhereMod[Q, string]
+	BodySnapshot                psql.WhereMod[Q, string]
+	PostmarkBulkRequestID       psql.WhereMod[Q, string]
+	PostmarkStatus              psql.WhereMod[Q, string]
+	PostmarkSubmittedAt         psql.WhereNullMod[Q, time.Time]
+	PostmarkTotalMessages       psql.WhereMod[Q, int32]
+	PostmarkPercentageCompleted psql.WhereMod[Q, float64]
+	StartedAt                   psql.WhereNullMod[Q, time.Time]
+	FinishedAt                  psql.WhereNullMod[Q, time.Time]
+	CreatedByUserID             psql.WhereNullMod[Q, int32]
+	UpdatedByUserID             psql.WhereNullMod[Q, int32]
+	CreatedAt                   psql.WhereMod[Q, time.Time]
+	UpdatedAt                   psql.WhereNullMod[Q, time.Time]
 }
 
 func (mailingWhere[Q]) AliasedAs(alias string) mailingWhere[Q] {
@@ -1244,22 +1316,25 @@ func (mailingWhere[Q]) AliasedAs(alias string) mailingWhere[Q] {
 
 func buildMailingWhere[Q psql.Filterable](cols mailingColumns) mailingWhere[Q] {
 	return mailingWhere[Q]{
-		ID:              psql.Where[Q, int32](cols.ID.Expression),
-		Name:            psql.Where[Q, string](cols.Name.Expression),
-		TemplateID:      psql.Where[Q, int32](cols.TemplateID.Expression),
-		ListID:          psql.Where[Q, int32](cols.ListID.Expression),
-		DomainID:        psql.Where[Q, int32](cols.DomainID.Expression),
-		Status:          psql.Where[Q, string](cols.Status.Expression),
-		SubjectSnapshot: psql.Where[Q, string](cols.SubjectSnapshot.Expression),
-		BodySnapshot:    psql.Where[Q, string](cols.BodySnapshot.Expression),
-		SentCount:       psql.Where[Q, int32](cols.SentCount.Expression),
-		FailedCount:     psql.Where[Q, int32](cols.FailedCount.Expression),
-		StartedAt:       psql.WhereNull[Q, time.Time](cols.StartedAt.Expression),
-		FinishedAt:      psql.WhereNull[Q, time.Time](cols.FinishedAt.Expression),
-		CreatedByUserID: psql.WhereNull[Q, int32](cols.CreatedByUserID.Expression),
-		UpdatedByUserID: psql.WhereNull[Q, int32](cols.UpdatedByUserID.Expression),
-		CreatedAt:       psql.Where[Q, time.Time](cols.CreatedAt.Expression),
-		UpdatedAt:       psql.WhereNull[Q, time.Time](cols.UpdatedAt.Expression),
+		ID:                          psql.Where[Q, int32](cols.ID.Expression),
+		Name:                        psql.Where[Q, string](cols.Name.Expression),
+		TemplateID:                  psql.Where[Q, int32](cols.TemplateID.Expression),
+		ListID:                      psql.Where[Q, int32](cols.ListID.Expression),
+		DomainID:                    psql.Where[Q, int32](cols.DomainID.Expression),
+		Status:                      psql.Where[Q, string](cols.Status.Expression),
+		SubjectSnapshot:             psql.Where[Q, string](cols.SubjectSnapshot.Expression),
+		BodySnapshot:                psql.Where[Q, string](cols.BodySnapshot.Expression),
+		PostmarkBulkRequestID:       psql.Where[Q, string](cols.PostmarkBulkRequestID.Expression),
+		PostmarkStatus:              psql.Where[Q, string](cols.PostmarkStatus.Expression),
+		PostmarkSubmittedAt:         psql.WhereNull[Q, time.Time](cols.PostmarkSubmittedAt.Expression),
+		PostmarkTotalMessages:       psql.Where[Q, int32](cols.PostmarkTotalMessages.Expression),
+		PostmarkPercentageCompleted: psql.Where[Q, float64](cols.PostmarkPercentageCompleted.Expression),
+		StartedAt:                   psql.WhereNull[Q, time.Time](cols.StartedAt.Expression),
+		FinishedAt:                  psql.WhereNull[Q, time.Time](cols.FinishedAt.Expression),
+		CreatedByUserID:             psql.WhereNull[Q, int32](cols.CreatedByUserID.Expression),
+		UpdatedByUserID:             psql.WhereNull[Q, int32](cols.UpdatedByUserID.Expression),
+		CreatedAt:                   psql.Where[Q, time.Time](cols.CreatedAt.Expression),
+		UpdatedAt:                   psql.WhereNull[Q, time.Time](cols.UpdatedAt.Expression),
 	}
 }
 

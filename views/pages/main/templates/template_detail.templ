@@ -111,7 +111,7 @@ templ TemplateForm(lang string, data TemplateFormData) {
 		}
 		@uiform.Item() {
 			@uiform.Label(uiform.LabelProps{For: "subject"}) {
-				{ Trl(ctx, L.Templates.Subject) }
+				{ Trl(ctx, L.Templates.MailSubject) }
 			}
 			@uiinput.Input(uiinput.Props{
 				ID:    "subject",
@@ -179,7 +179,12 @@ func snippetsJSON(snippets []snippet.Snippet) string {
 // (Snippet-Daten-Span, TinyMCE-Assets, Init-Skript) sitzt eine Ebene höher in
 // TemplateDetailPage und wird beim htmx-Swap auf die Form NICHT mit-ausgetauscht.
 templ templateEditor(lang string, data TemplateFormData) {
-	<textarea id="template-editor" name="body_html">{ data.BodyHTML }</textarea>
+	// `visibility:hidden` + Höhenreservierung blendet die rohe textarea aus,
+	// bis TinyMCE sie übernimmt (TinyMCE setzt anschließend `display:none`
+	// und ersetzt mit Editor-iframe). Verhindert den Screenshot-Effekt, in
+	// dem während der TinyMCE-Ladezeit kurz roher HTML-Markup sichtbar ist.
+	// Bei TinyMCE-Timeout entfernt das Init-Skript den Style als Fallback.
+	<textarea id="template-editor" name="body_html" style="visibility:hidden;height:500px;width:100%">{ data.BodyHTML }</textarea>
 }
 
 templ tinymceAssets() {
@@ -235,20 +240,54 @@ templ tinymceInitScript() {
 				});
 			}
 
-			// Race-Safe Init: bei sehr schnellem Mehrfach-Save kann afterSettle
-			// für den nächsten Swap feuern, während TinyMCE noch initialisiert.
-			// Wir tracken eine Pending-Promise und queuen den nächsten Init.
+			// whenTinyMCEReady wartet per Polling bis `window.tinymce` verfügbar
+			// ist. Hintergrund: bei htmx-Swap wird `<script src="tinymce.min.js">`
+			// asynchron nachgeladen, das Inline-Skript läuft aber sofort. Ein
+			// Fallback auf `DOMContentLoaded` würde nie feuern, weil dieses
+			// Event beim initial-Load längst gewesen ist. Polling ist robust
+			// und idempotent (mehrere parallele Calls warten alle auf dasselbe
+			// `window.tinymce`).
+			function whenTinyMCEReady(cb) {
+				if (window.tinymce) { cb(); return; }
+				let elapsed = 0;
+				const tick = function() {
+					if (window.tinymce) { cb(); return; }
+					elapsed += 50;
+					if (elapsed > 10000) {
+						console.warn('[tmce] tinymce did not load within 10s');
+						// Fallback: textarea wieder sichtbar machen, damit
+						// der User wenigstens den rohen HTML-Body editieren
+						// kann statt eine leere Stelle zu sehen.
+						const ta = document.getElementById('template-editor');
+						if (ta) ta.style.visibility = '';
+						return;
+					}
+					setTimeout(tick, 50);
+				};
+				setTimeout(tick, 50);
+			}
+
+			// Idempotenter Init: mehrere parallele Aufrufe (inline-script +
+			// htmx:afterSettle + queued retry) sind möglich. Logik:
+			//   1. Wenn TinyMCE noch nicht geladen ist → warten, retry.
+			//   2. Wenn Editor für '#template-editor' bereits existiert → skip
+			//      (verhindert das remove-then-init Pingpong, das den Editor
+			//      manchmal in einem unfertigen Zwischenzustand stehen ließ
+			//      und die rohe textarea sichtbar machte).
+			//   3. Wenn init gerade läuft → skip (initPromise-Lock).
+			//   4. Sonst: ALLE stale Editor-Instanzen weg, dann neu init.
 			let initPromise = null;
-			let initQueued  = false;
 			function initEditor() {
-				if (!window.tinymce) return;
+				if (!window.tinymce) { whenTinyMCEReady(initEditor); return; }
 				const ta = document.getElementById('template-editor');
 				if (!ta) return;
-				if (initPromise) {
-					initQueued = true;
-					return;
-				}
-				try { window.tinymce.remove('#template-editor'); } catch (e) {}
+				if (window.tinymce.get && window.tinymce.get('template-editor')) return;
+				if (initPromise) return;
+				try {
+					(window.tinymce.editors || []).slice().forEach(function(ed) {
+						try { ed.remove(); } catch (e) {}
+					});
+				} catch (e) {}
 				initPromise = window.tinymce.init({
 					selector: '#template-editor',
 					// `gpl` als License-Key: bestätigt explizit, dass wir die
@@ -335,14 +374,11 @@ templ tinymceInitScript() {
 					},
 				});
 
-				// Auflösen der Init-Promise + ggf. Queued-Init nachholen
-				const done = function() {
-					initPromise = null;
-					if (initQueued) {
-						initQueued = false;
-						initEditor();
-					}
-				};
+				// Init-Lock auflösen, sobald TinyMCE fertig ist (oder fail).
+				// KEIN retry-on-queue mehr — Idempotenz garantiert via
+				// tinymce.get()-Check oben. Spätere Aufrufe (afterSettle,
+				// nachfolgende Swaps) sehen den existenten Editor und skippen.
+				const done = function() { initPromise = null; };
 				if (initPromise && typeof initPromise.then === 'function') {
 					initPromise.then(done, done);
 				} else {
@@ -368,11 +404,10 @@ templ tinymceInitScript() {
 
 			window.__tmceTemplateBound = initEditor;
 
-			if (window.tinymce) {
-				initEditor();
-			} else {
-				document.addEventListener('DOMContentLoaded', initEditor);
-			}
+			// initEditor selbst wartet auf TinyMCE via whenTinyMCEReady —
+			// kein DOMContentLoaded-Fallback nötig, der bei htmx-Swap nie
+			// feuern würde.
+			initEditor();
 
 			// htmx swappt das Form mit `outerHTML` aus — Script-Tags im
 			// geswappten Content laufen in htmx 2 standardmäßig NICHT
@@ -387,8 +422,17 @@ templ tinymceInitScript() {
 			document.body.addEventListener('htmx:beforeCleanupElement', function(evt) {
 				if (!window.tinymce) return;
 				const el = evt.detail && evt.detail.elt;
-				if (el && el.querySelector && el.querySelector('#template-editor')) {
-					window.tinymce.remove('#template-editor');
+				if (!el || !el.querySelector) return;
+				// Wenn das gecleante Element den Editor enthält: ALLE
+				// TinyMCE-Instanzen abräumen. Selector-basierter remove kann
+				// fehlschlagen, wenn TinyMCE intern eine Referenz auf eine
+				// schon detachte textarea hält (z. B. bei outerHTML-Swaps).
+				if (el.querySelector('#template-editor')) {
+					try {
+						(window.tinymce.editors || []).slice().forEach(function(ed) {
+							try { ed.remove(); } catch (e) {}
+						});
+					} catch (e) {}
 				}
 			});
 			document.body.addEventListener('htmx:afterSettle', function() {

@@ -1,49 +1,41 @@
 package pages
 
 import (
+	"app/api/router"
 	"app/db"
 	"app/mw"
 	"app/views"
 	authshared "app/views/pages/auth/shared"
 	usersview "app/views/pages/main/users"
 
-	globaltable "github.com/nakami-lounge-GmbH/ui-components/table"
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 )
 
 func UsersPage(c *mw.AnonUserContext) error {
-	if c.HasUser {
-		request := globaltable.ReadRequest(c.Request(), usersview.CurrentUsersTableID)
-		sorts := make(db.SortParams, len(request.Pagination.Sorts))
-		for i, s := range request.Pagination.Sorts {
-			sorts[i] = db.SortParam{Field: s.Field, IsDesc: s.IsDesc}
-		}
-		if v := c.QueryParam("filter_status"); v != "" {
-			request.FilterCriteria["filterStatus"] = v
-		}
-		rows, total, err := db.LoadUserProfileTableRows(c.Request().Context(), db.FilterRequest[map[string]string]{
-			P: db.PaginationData{
-				Page:  request.Pagination.Page,
-				Count: request.Pagination.Count,
-				Sorts: sorts,
-			},
-			FilterCriteria: request.FilterCriteria,
-		})
-		if err != nil {
-			return err
-		}
-
-		filterData := usersview.UsersFilterData{
-			SelectedStatus: c.QueryParam("filter_status"),
-		}
-
-		if isHXRequest(c) {
-			if c.Request().Header.Get("HX-Target") == "users-table" {
-				return views.Render(c, usersview.CurrentUsersTable(c.Lang, rows, request, total))
-			}
-			return views.Render(c, usersview.UsersPage(c.Lang, rows, request, total, filterData))
-		}
-		return views.Render(c, usersview.Users(c.UserProfile, c.Lang, rows, request, total, filterData))
+	if !c.HasUser {
+		return views.Render(c, authshared.Login("", c.Lang))
 	}
 
-	return views.Render(c, authshared.Login("", c.Lang))
+	bind := db.BindPaginated(c, 50, func(b *db.FilterBinder, criteria *db.UserProfileCriteria) {
+		b.String("full_name", &criteria.FullName)
+		b.String("status", &criteria.Status)
+	})
+	rows, total, err := db.QueryUserProfileRows(c.Request().Context(), bind.Pagination, bind.Criteria)
+	if err != nil {
+		return err
+	}
+	state := datatable.TableState{
+		Page:      bind.Pagination.Page,
+		Count:     bind.Pagination.Count,
+		Total:     total,
+		SortField: bind.SortField,
+		SortDesc:  bind.SortDesc,
+		Filters:   bind.Filters,
+		Endpoint:  router.Reverse(router.Users.List),
+		Target:    "#layout-content-body",
+	}
+	if isHXRequest(c) {
+		return views.Render(c, usersview.UsersPage(c.Lang, rows, state))
+	}
+	return views.Render(c, usersview.Users(c.UserProfile, c.Lang, rows, state))
 }

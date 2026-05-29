@@ -6,23 +6,27 @@ import (
 	"app/mq"
 	. "app/views/layout"
 	"strconv"
+
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
 	uidropzone "github.com/nakami-lounge-GmbH/ui-components/dropzone"
 	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
 	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
 	breadcrumb "github.com/templui/templui/components/breadcrumb"
-	tuibutton "github.com/templui/templui/components/button"
 	tuicard "github.com/templui/templui/components/card"
 	tuidialog "github.com/templui/templui/components/dialog"
-	tuiicon "github.com/templui/templui/components/icon"
 )
 
+// ListFormData transportiert sowohl die Form-Header-Daten der Liste als auch
+// den paginated state der Recipients-Tabelle. RecipientsRows/RecipientsState
+// werden nur gefüllt, wenn IsNew == false.
 type ListFormData struct {
-	ID          int32
-	Name        string
-	Description string
-	IsNew       bool
-	Recipients  []*mq.MailListRecipient
+	ID              int32
+	Name            string
+	Description     string
+	IsNew           bool
+	RecipientsRows  []*mq.MailListRecipient
+	RecipientsState datatable.TableState
 }
 
 templ ListDetail(user *mq.UserProfile, lang string, data ListFormData) {
@@ -37,7 +41,7 @@ templ ListDetailPage(lang string, data ListFormData) {
 		@ListForm(lang, data)
 		if !data.IsNew {
 			@ListImportPanel(lang, data)
-			@ListRecipientsPanel(lang, data)
+			@ListRecipientsPanel(lang, data.ID, data.RecipientsRows, data.RecipientsState)
 		}
 	</div>
 }
@@ -148,11 +152,11 @@ templ ListImportPanel(lang string, data ListFormData) {
 				Action: importAction,
 				Method: "post",
 				Attributes: templ.Attributes{
-					"hx-post":         importAction,
-					"hx-swap":         "outerHTML",
-					"hx-target":       "#list-recipients-panel",
-					"hx-encoding":     "multipart/form-data",
-					"enctype":         "multipart/form-data",
+					"hx-post":     importAction,
+					"hx-swap":     "outerHTML",
+					"hx-target":   "#list-recipients-panel",
+					"hx-encoding": "multipart/form-data",
+					"enctype":     "multipart/form-data",
 				},
 			}) {
 				@uidropzone.Dropzone(uidropzone.Props{
@@ -175,8 +179,12 @@ templ ListImportPanel(lang string, data ListFormData) {
 	}
 }
 
-templ ListRecipientsPanel(lang string, data ListFormData) {
-	{{ deleteURLPattern := router.Reverse(router.Lists.DeleteRecipient, strconv.Itoa(int(data.ID)), "__REC__") }}
+// ListRecipientsPanel wraps Header + paginierte Tabelle + Confirm-Dialog.
+// Wird komplett re-gerendert nach Import / Delete. Die innere Tabelle wird
+// für sort/filter/page-Updates separat als ListRecipientsTable getauscht
+// (Target = #list-recipients-table-container).
+templ ListRecipientsPanel(lang string, listID int32, rows []*mq.MailListRecipient, state datatable.TableState) {
+	{{ deleteURLPattern := router.Reverse(router.Lists.DeleteRecipient, strconv.Itoa(int(listID)), "__REC__") }}
 	<div
 		id="list-recipients-panel"
 		x-data={ "{ pendingRecId: 0, pendingRecEmail: '', deleteURLPattern: " + alpineString(deleteURLPattern) + " }" }
@@ -184,50 +192,13 @@ templ ListRecipientsPanel(lang string, data ListFormData) {
 		@tuicard.Card() {
 			@tuicard.Header() {
 				@tuicard.Title(tuicard.TitleProps{Class: "text-base"}) {
-					{ Trl(ctx, L.Lists.Recipients) } ({ strconv.Itoa(len(data.Recipients)) })
+					{ Trl(ctx, L.Lists.Recipients) } ({ strconv.FormatInt(state.Total, 10) })
 				}
 			}
 			@tuicard.Content() {
-				if len(data.Recipients) == 0 {
-					<p class="text-sm text-muted-foreground">{ Trl(ctx, L.Lists.NoRecipientsYet) }</p>
-				} else {
-					<div class="overflow-x-auto">
-						<table class="w-full text-sm">
-							<thead>
-								<tr class="text-left text-xs text-muted-foreground border-b">
-									<th class="py-2 pr-3">{ Trl(ctx, L.Auth.Email) }</th>
-									<th class="py-2 pr-3">{ Trl(ctx, L.Auth.FirstName) }</th>
-									<th class="py-2 pr-3">{ Trl(ctx, L.Auth.LastName) }</th>
-									<th class="py-2 w-10"></th>
-								</tr>
-							</thead>
-							<tbody>
-								for _, r := range data.Recipients {
-									<tr class="border-b last:border-0">
-										<td class="py-1 pr-3">{ r.Email }</td>
-										<td class="py-1 pr-3">{ r.Forename }</td>
-										<td class="py-1 pr-3">{ r.Lastname }</td>
-										<td class="py-1 text-right">
-											@tuibutton.Button(tuibutton.Props{
-												Size:    tuibutton.SizeIcon,
-												Variant: tuibutton.VariantGhost,
-												Class:   "size-7 text-muted-foreground hover:text-destructive",
-												Attributes: templ.Attributes{
-													"type":       "button",
-													"aria-label": Trl(ctx, L.Lists.DeleteRecipient),
-													"title":      Trl(ctx, L.Lists.DeleteRecipient),
-													"@click":     "pendingRecId = " + strconv.Itoa(int(r.ID)) + "; pendingRecEmail = " + alpineString(r.Email) + "; window.tui.dialog.open('confirm-delete-recipient')",
-												},
-											}) {
-												@tuiicon.Minus(tuiicon.Props{Class: "size-4"})
-											}
-										</td>
-									</tr>
-								}
-							</tbody>
-						</table>
-					</div>
-				}
+				<div id="list-recipients-table-container">
+					@ListRecipientsTable(rows, state)
+				</div>
 			}
 		}
 		@confirmDeleteRecipientDialog(lang)
