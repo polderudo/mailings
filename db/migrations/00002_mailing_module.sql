@@ -44,7 +44,15 @@ create table mail_domain
 create unique index mail_domain_ix_sender on mail_domain (lower(sender));
 
 insert into mail_domain (sender, from_email, from_name, postmark_stream_id, is_active) values
-    ('info@nakami.de', 'info@nakami.de', 'Nakami Lounge', 'broadcast', true);
+    ('info@nakami.de', 'info@nakami.de', 'nakami lounge', 'broadcast', true),
+    ('info@cardy.cloud', 'info@cardy.cloud', 'cardy.cloud', 'broadcast', true),
+    ('info@digital-schulfoto.de', 'info@digital-schulfoto.de', 'digital-schulfoto.de', 'broadcast', true),
+    ('info@adressdaten.net', 'info@adressdaten.net', 'adressdaten.net', 'broadcast', true),
+    ('info@austrian-schulfoto.at', 'info@austrian-schulfoto.at', 'austrian-schulfoto.at', 'broadcast', true),
+    ('info@private-caviar.de', 'info@private-caviar.de', 'private-caviar.de', 'broadcast', true),
+    ('info@simplex-schulfoto.ch', 'info@nsimplex-schulfoto.ch', 'nsimplex-schulfoto.ch', 'broadcast', true),
+    ('info@servicecenterprojekt.de', 'info@servicecenterprojekt.de', 'servicecenterprojekt.de', 'broadcast', true);
+    ;
 
 create table mailing
 (

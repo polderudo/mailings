@@ -32,3 +32,6 @@ up:
 
 down:
 	$(GOOSE) postgres -table goose_version -dir db/migrations "user=$(GOOSE_USER) password=$(GOOSE_PWD) dbname=$(GOOSE_DB) port=$(GOOSE_PORT) host=$(GOOSE_HOST) sslmode=disable" down-to $(GOOSE_TO_VERSION)
+
+live:
+	spot -t prod  -v --dbg -p spot-live.yml

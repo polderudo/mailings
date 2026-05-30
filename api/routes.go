@@ -3,6 +3,8 @@ package api
 import (
 	"app/api/anon"
 	"app/api/jslogger"
+	"app/assets"
+	"app/conf"
 	authApi "app/core/auth/api"
 	listsApi "app/core/lists/api"
 	mailingsApi "app/core/mailings/api"
@@ -25,7 +27,7 @@ func CreateCoreRoutes(e *echo.Echo, config echojwt.Config) {
 			return strings.HasPrefix(path, "/static/") || strings.Contains(path, ".")
 		},
 	}))
-	e.Static("/static", "assets")
+	e.GET("/static/*", staticHandler())
 
 	templuiMux := http.NewServeMux()
 	templuiutils.SetupScriptRoutes(templuiMux, true)
@@ -61,4 +63,24 @@ func CreateCoreRoutes(e *echo.Echo, config echojwt.Config) {
 	mailingsApi.CreateRoutes(rUser)
 
 	return
+}
+
+// staticHandler serves everything under /static/. By default assets are read
+// from the embedded filesystem (assets.FS) so the binary is self-contained.
+// When conf.C.ServeAssetsFromDisk is set (dev), the embed base is swapped for a
+// disk-rooted FS so CSS/JS/img edits are live without rebuilding.
+func staticHandler() echo.HandlerFunc {
+	if conf.C != nil && conf.C.ServeAssetsFromDisk {
+		assets.UseDiskBase("assets")
+	}
+	fileServer := http.FileServer(http.FS(assets.FS))
+
+	return func(c echo.Context) error {
+		// output.css is rebuilt on every deploy; prevent browsers from serving a stale version.
+		if strings.HasSuffix(c.Request().URL.Path, "/output.css") {
+			c.Response().Header().Set("Cache-Control", "no-store")
+		}
+		http.StripPrefix("/static/", fileServer).ServeHTTP(c.Response(), c.Request())
+		return nil
+	}
 }

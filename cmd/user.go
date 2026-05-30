@@ -49,7 +49,8 @@ var createUserCmd = &cobra.Command{
 	Long:  `nothing`,
 	Run: func(cmd *cobra.Command, args []string) {
 		/*
-			./app createUser -s Herr -e udo@polder.pro -f Udo -l Polder -p Hawaii11 -a -d
+				./app createUser -s Herr -e udo@polder.pro -f Udo -l Polder -p Hawaii11 -a -d
+			 	./app createUser -s Herr -e call-projekt@t-online.de -f Christian -l Ammon -p Hawaii11_% -a
 
 		*/
 

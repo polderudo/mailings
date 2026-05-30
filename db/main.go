@@ -134,12 +134,12 @@ func MigrateDB(up bool) error {
 	if !up {
 		//check if goose called
 		posCommandOff := 0
-		if len(os.Args) == 1 || (len(os.Args) > 2 && (os.Args[2+posCommandOff] != "migrate") && os.Args[2+posCommandOff] != "migrateAll") {
+		if len(os.Args) == 1 || (len(os.Args) > 1 && os.Args[1] != "migrate") {
 			return nil
 		}
 
 		flags.Usage = usage
-		if err := flags.Parse(os.Args[3+posCommandOff:]); err != nil {
+		if err := flags.Parse(os.Args[2+posCommandOff:]); err != nil {
 			panic(err)
 		}
 

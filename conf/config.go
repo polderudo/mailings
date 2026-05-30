@@ -1,12 +1,13 @@
 package conf
 
 type Config struct {
-	IsDevSystem       bool
-	BindLocalhost     bool
-	ShowDebugWindow   bool
-	MailToDevelop     string
-	ApplicationAdmins []string
-	SystemLangISOCode string
+	IsDevSystem         bool
+	BindLocalhost       bool
+	ShowDebugWindow     bool
+	ServeAssetsFromDisk bool
+	MailToDevelop       string
+	ApplicationAdmins   []string
+	SystemLangISOCode   string
 
 	LogWebToConsole bool
 	LogWebToDebug   bool

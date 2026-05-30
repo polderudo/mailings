@@ -1,11 +1,14 @@
 IsDevSystem: true
 BindLocalhost: false
 ShowDebugWindow: true
+# Dev: Assets live von Disk lesen (kein Rebuild bei CSS/JS-Aenderungen).
+# Default ist false (embedded) -> selbstenthaltendes Binary fuer Produktion.
+ServeAssetsFromDisk: true
 UseHTTPs: false
 HTTPSKeyFile: "~/.ssh/dev_key.pem"
 HTTPSCertFile: "~/.ssh/dev_cert.pem"
 
-Port: 3000
+Port: 8035
 JWTSecreteKey: "mPPP79UGyayWaDk34eWoQIn9XGxwjdgQtofsm9L4"
 JWTTokenDurationMinutes: 2880
 ApplicationName: Mailings (dev)
@@ -24,11 +27,11 @@ DB:
   Schema: mailings
 
 WebURL:
-  WebURL: http://localhost:3000/
-  WebURLLogin: http://localhost:3000/auth/login
-  CreatePassword: http://localhost:3000/password_create/%s
-  EmailValidate: http://localhost:3000/email_validate/%s
-  APIUrl: http://localhost:3000/api
+  WebURL: https://mailing.polder.de/
+  WebURLLogin: https://mailing.polder.de/auth/login
+  CreatePassword: https://mailing.polder.de/password_create/%s
+  EmailValidate: https://mailing.polder.de/email_validate/%s
+  APIUrl: https://mailing.polder.de/api
 
 MailConfig:
   Host: mh.nakami.de
@@ -43,8 +46,8 @@ MailConfig:
 Postmark:
   ServerToken: ""                            # TODO: echter Postmark Server-Token eintragen
   ApiBaseURL: "https://api.postmarkapp.com"
-  TrackOpens: true
-  TrackLinks: "HtmlAndText"                   # None | HtmlAndText | HtmlOnly | TextOnly
+  TrackOpens: false
+  TrackLinks: "None"                   # None | HtmlAndText | HtmlOnly | TextOnly
 
 LogWebToConsole: true
 LogWebToDebug: true

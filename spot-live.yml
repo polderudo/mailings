@@ -1,0 +1,52 @@
+# spot -t stage -p spot-stage.yml
+# spot -t stage -p spot-stage.yml -v --dbg
+
+ssh_key: ~/.ssh/deploy_rsa.private
+local_shell: /bin/bash
+
+targets:
+  prod:
+    hosts: [ { host: "95.217.75.183", user: "root", port: 22 } ]
+
+tasks:
+  - name: set global-vars
+    options: {local: true}
+    commands:
+      - name: set global vars
+        script: |
+          BINARY_NAME=mailings.live
+          SRV_FILE_NAME=$(date '+%Y-%m-%d--%H.%M.%S').$BINARY_NAME
+        register: [ BINARY_NAME, SRV_FILE_NAME ]
+
+  - name: set vars-live
+    options: {local: true}
+    commands:
+      - name: set live-vars
+        script: |
+          SUPERVISOR_NAME=mailings
+          SERVER_DIR=/srv/mailings/api
+        register: [SERVER_DIR, NODE_BUILD_TARGET, SUPERVISOR_NAME]
+
+  - name: build go
+    options: {local: true}
+    commands:
+      - name: create binary
+        script: task build-linux BIN_NAME=$BINARY_NAME
+
+  - name: manage server
+    commands:
+      - name: copy to server
+        copy: { "src": "$BINARY_NAME", "dst": "$SERVER_DIR/versions/$SRV_FILE_NAME" }
+
+      - name: change sym-link to current version
+        script: ln -fsn $SERVER_DIR/versions/$SRV_FILE_NAME $SERVER_DIR/app
+
+      - name: migrate db
+        script: |
+          cd $SERVER_DIR 
+          ./app migrate up
+
+      - name: restart app
+        script: |
+          supervisorctl restart $SUPERVISOR_NAME  
+          
