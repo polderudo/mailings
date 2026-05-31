@@ -5,6 +5,7 @@ import (
 	. "app/i18n"
 	"app/mq"
 	. "app/views/layout"
+	"context"
 	"strconv"
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
 	uidropdown "github.com/nakami-lounge-GmbH/ui-components/dropdown"
@@ -54,6 +55,7 @@ type MailingDetailData struct {
 	ListName       string
 	Domain         string
 	RecipientCount int64
+	Archived       bool
 }
 
 templ MailingNew(user *mq.UserProfile, lang string, data MailingNewFormData) {
@@ -233,9 +235,28 @@ templ MailingInfo(lang string, data MailingDetailData) {
 						})
 					</div>
 				}
+				<div class="flex justify-end pt-2">
+					@uibutton.Button(uibutton.Props{
+						Color: "secondary",
+						Size:  "sm",
+						Label: mailingArchiveLabel(ctx, data.Archived),
+						Attrs: templ.Attributes{
+							"type":    "button",
+							"hx-post": router.Reverse(router.Mailings.Archive, strconv.Itoa(int(data.Mailing.ID))),
+						},
+					})
+				</div>
 			}
 		}
 	</div>
+}
+
+// mailingArchiveLabel liefert "Wiederherstellen" wenn archiviert, sonst "Archivieren".
+func mailingArchiveLabel(ctx context.Context, archived bool) string {
+	if archived {
+		return Trl(ctx, L.Ui.Restore)
+	}
+	return Trl(ctx, L.Ui.Archive)
 }
 
 // postmarkSubmittedDisplay formatiert den Postmark-Übermittlungszeitpunkt oder

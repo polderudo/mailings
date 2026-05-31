@@ -35,6 +35,7 @@ type MailTemplate struct {
 	UpdatedByUserID null.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
 	CreatedAt       time.Time           `db:"created_at" json:"created_at"`
 	UpdatedAt       null.Val[time.Time] `db:"updated_at" json:"updated_at"`
+	Archived        bool                `db:"archived" json:"archived"`
 
 	R mailTemplateR `db:"-" json:"R"`
 
@@ -71,7 +72,7 @@ type mailTemplateRLoaded struct {
 
 func buildMailTemplateColumns(tableName string) mailTemplateColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "name", "subject", "body_html", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
+		"id", "name", "subject", "body_html", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at", "archived",
 	)
 
 	if tableName != "" {
@@ -89,6 +90,7 @@ func buildMailTemplateColumns(tableName string) mailTemplateColumns {
 		UpdatedByUserID: buildMailTemplateColumn(tableName, "updated_by_user_id"),
 		CreatedAt:       buildMailTemplateColumn(tableName, "created_at"),
 		UpdatedAt:       buildMailTemplateColumn(tableName, "updated_at"),
+		Archived:        buildMailTemplateColumn(tableName, "archived"),
 	}
 }
 
@@ -103,6 +105,7 @@ type mailTemplateColumns struct {
 	UpdatedByUserID mailTemplateColumn
 	CreatedAt       mailTemplateColumn
 	UpdatedAt       mailTemplateColumn
+	Archived        mailTemplateColumn
 }
 
 // Alias returns the current table alias for the columns set.
@@ -156,10 +159,11 @@ type MailTemplateSetter struct {
 	UpdatedByUserID omitnull.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
 	CreatedAt       omit.Val[time.Time]     `db:"created_at" json:"created_at"`
 	UpdatedAt       omitnull.Val[time.Time] `db:"updated_at" json:"updated_at"`
+	Archived        omit.Val[bool]          `db:"archived" json:"archived"`
 }
 
 func (s MailTemplateSetter) SetColumns() []string {
-	vals := make([]string, 0, 8)
+	vals := make([]string, 0, 9)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -183,6 +187,9 @@ func (s MailTemplateSetter) SetColumns() []string {
 	}
 	if !s.UpdatedAt.IsUnset() {
 		vals = append(vals, "updated_at")
+	}
+	if s.Archived.IsValue() {
+		vals = append(vals, "archived")
 	}
 	return vals
 }
@@ -212,6 +219,9 @@ func (s MailTemplateSetter) Overwrite(t *MailTemplate) {
 	if !s.UpdatedAt.IsUnset() {
 		t.UpdatedAt = s.UpdatedAt.MustGetNull()
 	}
+	if s.Archived.IsValue() {
+		t.Archived = s.Archived.MustGet()
+	}
 }
 
 func (s *MailTemplateSetter) Apply(q *dialect.InsertQuery) {
@@ -220,7 +230,7 @@ func (s *MailTemplateSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 8)
+		vals := make([]bob.Expression, 9)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -269,6 +279,12 @@ func (s *MailTemplateSetter) Apply(q *dialect.InsertQuery) {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
+		if s.Archived.IsValue() {
+			vals[8] = psql.Arg(s.Archived.MustGet())
+		} else {
+			vals[8] = psql.Raw("DEFAULT")
+		}
+
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
 	}))
 }
@@ -278,7 +294,7 @@ func (s MailTemplateSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s MailTemplateSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 8)
+	exprs := make([]bob.Expression, 0, 9)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -333,6 +349,13 @@ func (s MailTemplateSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "updated_at")...),
 			psql.Arg(s.UpdatedAt),
+		}})
+	}
+
+	if s.Archived.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "archived")...),
+			psql.Arg(s.Archived),
 		}})
 	}
 
@@ -828,6 +851,7 @@ type mailTemplateWhere[Q psql.Filterable] struct {
 	UpdatedByUserID psql.WhereNullMod[Q, int32]
 	CreatedAt       psql.WhereMod[Q, time.Time]
 	UpdatedAt       psql.WhereNullMod[Q, time.Time]
+	Archived        psql.WhereMod[Q, bool]
 }
 
 func (mailTemplateWhere[Q]) AliasedAs(alias string) mailTemplateWhere[Q] {
@@ -844,6 +868,7 @@ func buildMailTemplateWhere[Q psql.Filterable](cols mailTemplateColumns) mailTem
 		UpdatedByUserID: psql.WhereNull[Q, int32](cols.UpdatedByUserID.Expression),
 		CreatedAt:       psql.Where[Q, time.Time](cols.CreatedAt.Expression),
 		UpdatedAt:       psql.WhereNull[Q, time.Time](cols.UpdatedAt.Expression),
+		Archived:        psql.Where[Q, bool](cols.Archived.Expression),
 	}
 }
 

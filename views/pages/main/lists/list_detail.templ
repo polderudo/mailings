@@ -5,6 +5,7 @@ import (
 	. "app/i18n"
 	"app/mq"
 	. "app/views/layout"
+	"context"
 	"strconv"
 
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
@@ -24,6 +25,7 @@ type ListFormData struct {
 	ID              int32
 	Name            string
 	Description     string
+	Archived        bool
 	IsNew           bool
 	RecipientsRows  []*mq.MailListRecipient
 	RecipientsState datatable.TableState
@@ -125,7 +127,18 @@ templ ListForm(lang string, data ListFormData) {
 						{ data.Description }
 					</textarea>
 				}
-				<div class="flex justify-end">
+				<div class="flex justify-end gap-2">
+					if !data.IsNew {
+						@uibutton.Button(uibutton.Props{
+							Color: "secondary",
+							Size:  "sm",
+							Label: archiveLabel(ctx, data.Archived),
+							Attrs: templ.Attributes{
+								"type":    "button",
+								"hx-post": router.Reverse(router.Lists.Archive, strconv.Itoa(int(data.ID))),
+							},
+						})
+					}
 					@uibutton.Button(uibutton.Props{
 						Type:  "submit",
 						Color: "primary",
@@ -196,6 +209,7 @@ templ ListRecipientsPanel(lang string, listID int32, rows []*mq.MailListRecipien
 				}
 			}
 			@tuicard.Content() {
+				@addRecipientForm(lang, listID)
 				<div id="list-recipients-table-container">
 					@ListRecipientsTable(rows, state)
 				</div>
@@ -203,6 +217,61 @@ templ ListRecipientsPanel(lang string, listID int32, rows []*mq.MailListRecipien
 		}
 		@confirmDeleteRecipientDialog(lang)
 	</div>
+}
+
+// addRecipientForm ist das Inline-Formular zum direkten Hinzufügen eines
+// einzelnen Empfängers. POST → ListRecipientAdd, re-rendert das ganze
+// #list-recipients-panel. Nach erfolgreichem Request wird das Formular geleert.
+templ addRecipientForm(lang string, listID int32) {
+	{{ addAction := router.Reverse(router.Lists.AddRecipient, strconv.Itoa(int(listID))) }}
+	@uiform.Form(uiform.FormProps{
+		Class:  "mb-4 flex flex-col gap-3 sm:flex-row sm:items-end",
+		Action: addAction,
+		Method: "post",
+		Attributes: templ.Attributes{
+			"hx-post":              addAction,
+			"hx-swap":              "outerHTML",
+			"hx-target":            "#list-recipients-panel",
+			"hx-on::after-request": "if(event.detail.successful){this.reset()}",
+		},
+	}) {
+		<div class="flex-1">
+			@uiform.Label(uiform.LabelProps{For: "add-email"}) {
+				{ Trl(ctx, L.Auth.Email) }
+			}
+			@uiinput.Input(uiinput.Props{
+				ID:       "add-email",
+				Name:     "email",
+				Required: true,
+			})
+		</div>
+		<div class="flex-1">
+			@uiform.Label(uiform.LabelProps{For: "add-forename"}) {
+				{ Trl(ctx, L.Auth.FirstName) }
+			}
+			@uiinput.Input(uiinput.Props{ID: "add-forename", Name: "forename"})
+		</div>
+		<div class="flex-1">
+			@uiform.Label(uiform.LabelProps{For: "add-lastname"}) {
+				{ Trl(ctx, L.Auth.LastName) }
+			}
+			@uiinput.Input(uiinput.Props{ID: "add-lastname", Name: "lastname"})
+		</div>
+		@uibutton.Button(uibutton.Props{
+			Type:  "submit",
+			Color: "primary",
+			Size:  "sm",
+			Label: Trl(ctx, L.Lists.AddRecipient),
+		})
+	}
+}
+
+// archiveLabel liefert "Wiederherstellen" wenn archiviert, sonst "Archivieren".
+func archiveLabel(ctx context.Context, archived bool) string {
+	if archived {
+		return Trl(ctx, L.Ui.Restore)
+	}
+	return Trl(ctx, L.Ui.Archive)
 }
 
 // alpineString quotes a Go string so it can be embedded inside a templ string

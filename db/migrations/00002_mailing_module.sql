@@ -50,7 +50,7 @@ insert into mail_domain (sender, from_email, from_name, postmark_stream_id, is_a
     ('info@adressdaten.net', 'info@adressdaten.net', 'adressdaten.net', 'broadcast', true),
     ('info@austrian-schulfoto.at', 'info@austrian-schulfoto.at', 'austrian-schulfoto.at', 'broadcast', true),
     ('info@private-caviar.de', 'info@private-caviar.de', 'private-caviar.de', 'broadcast', true),
-    ('info@simplex-schulfoto.ch', 'info@nsimplex-schulfoto.ch', 'nsimplex-schulfoto.ch', 'broadcast', true),
+    ('info@simplex-schulfoto.ch', 'info@simplex-schulfoto.ch', 'simplex-schulfoto.ch', 'broadcast', true),
     ('info@servicecenterprojekt.de', 'info@servicecenterprojekt.de', 'servicecenterprojekt.de', 'broadcast', true);
     ;
 

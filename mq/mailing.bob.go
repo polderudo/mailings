@@ -46,6 +46,7 @@ type Mailing struct {
 	UpdatedByUserID             null.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
 	CreatedAt                   time.Time           `db:"created_at" json:"created_at"`
 	UpdatedAt                   null.Val[time.Time] `db:"updated_at" json:"updated_at"`
+	Archived                    bool                `db:"archived" json:"archived"`
 
 	R mailingR `db:"-" json:"R"`
 
@@ -88,7 +89,7 @@ type mailingRLoaded struct {
 
 func buildMailingColumns(tableName string) mailingColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "postmark_bulk_request_id", "postmark_status", "postmark_submitted_at", "postmark_total_messages", "postmark_percentage_completed", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at",
+		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "postmark_bulk_request_id", "postmark_status", "postmark_submitted_at", "postmark_total_messages", "postmark_percentage_completed", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at", "archived",
 	)
 
 	if tableName != "" {
@@ -117,6 +118,7 @@ func buildMailingColumns(tableName string) mailingColumns {
 		UpdatedByUserID:             buildMailingColumn(tableName, "updated_by_user_id"),
 		CreatedAt:                   buildMailingColumn(tableName, "created_at"),
 		UpdatedAt:                   buildMailingColumn(tableName, "updated_at"),
+		Archived:                    buildMailingColumn(tableName, "archived"),
 	}
 }
 
@@ -142,6 +144,7 @@ type mailingColumns struct {
 	UpdatedByUserID             mailingColumn
 	CreatedAt                   mailingColumn
 	UpdatedAt                   mailingColumn
+	Archived                    mailingColumn
 }
 
 // Alias returns the current table alias for the columns set.
@@ -206,10 +209,11 @@ type MailingSetter struct {
 	UpdatedByUserID             omitnull.Val[int32]     `db:"updated_by_user_id" json:"updated_by_user_id"`
 	CreatedAt                   omit.Val[time.Time]     `db:"created_at" json:"created_at"`
 	UpdatedAt                   omitnull.Val[time.Time] `db:"updated_at" json:"updated_at"`
+	Archived                    omit.Val[bool]          `db:"archived" json:"archived"`
 }
 
 func (s MailingSetter) SetColumns() []string {
-	vals := make([]string, 0, 19)
+	vals := make([]string, 0, 20)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -266,6 +270,9 @@ func (s MailingSetter) SetColumns() []string {
 	}
 	if !s.UpdatedAt.IsUnset() {
 		vals = append(vals, "updated_at")
+	}
+	if s.Archived.IsValue() {
+		vals = append(vals, "archived")
 	}
 	return vals
 }
@@ -328,6 +335,9 @@ func (s MailingSetter) Overwrite(t *Mailing) {
 	if !s.UpdatedAt.IsUnset() {
 		t.UpdatedAt = s.UpdatedAt.MustGetNull()
 	}
+	if s.Archived.IsValue() {
+		t.Archived = s.Archived.MustGet()
+	}
 }
 
 func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
@@ -336,7 +346,7 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 19)
+		vals := make([]bob.Expression, 20)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -451,6 +461,12 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 			vals[18] = psql.Raw("DEFAULT")
 		}
 
+		if s.Archived.IsValue() {
+			vals[19] = psql.Arg(s.Archived.MustGet())
+		} else {
+			vals[19] = psql.Raw("DEFAULT")
+		}
+
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
 	}))
 }
@@ -460,7 +476,7 @@ func (s MailingSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 19)
+	exprs := make([]bob.Expression, 0, 20)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -592,6 +608,13 @@ func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "updated_at")...),
 			psql.Arg(s.UpdatedAt),
+		}})
+	}
+
+	if s.Archived.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "archived")...),
+			psql.Arg(s.Archived),
 		}})
 	}
 
@@ -1308,6 +1331,7 @@ type mailingWhere[Q psql.Filterable] struct {
 	UpdatedByUserID             psql.WhereNullMod[Q, int32]
 	CreatedAt                   psql.WhereMod[Q, time.Time]
 	UpdatedAt                   psql.WhereNullMod[Q, time.Time]
+	Archived                    psql.WhereMod[Q, bool]
 }
 
 func (mailingWhere[Q]) AliasedAs(alias string) mailingWhere[Q] {
@@ -1335,6 +1359,7 @@ func buildMailingWhere[Q psql.Filterable](cols mailingColumns) mailingWhere[Q] {
 		UpdatedByUserID:             psql.WhereNull[Q, int32](cols.UpdatedByUserID.Expression),
 		CreatedAt:                   psql.Where[Q, time.Time](cols.CreatedAt.Expression),
 		UpdatedAt:                   psql.WhereNull[Q, time.Time](cols.UpdatedAt.Expression),
+		Archived:                    psql.Where[Q, bool](cols.Archived.Expression),
 	}
 }
 

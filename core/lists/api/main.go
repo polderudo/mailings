@@ -32,6 +32,9 @@ func CreateRoutes(rUser *mw.UserGroup) {
 	rUser.AddNamedRoute(router.Lists.Recipients, "/lists/:id/recipients/", listsApi.ListRecipientsTable, http.MethodGet, http.MethodPost)
 	rUser.AddNamedRoute(router.Lists.Delete, "/lists/:id/", listsApi.ListDelete, http.MethodDelete)
 	rUser.AddNamedRoute(router.Lists.DeleteRecipient, "/lists/:id/recipients/:rec_id/", listsApi.ListRecipientDelete, http.MethodDelete)
+	// Einzelnen Empfänger direkt hinzufügen (Formular im Recipients-Panel).
+	rUser.AddNamedRoute(router.Lists.AddRecipient, "/lists/:id/recipients/add/", listsApi.ListRecipientAdd, http.MethodPost)
+	rUser.AddNamedRoute(router.Lists.Archive, "/lists/:id/archive/", listsApi.ListArchive, http.MethodPost)
 }
 
 func isHXRequest(c *mw.UserContext) bool {

@@ -246,6 +246,7 @@ func (f *Factory) fromExistingMailList(ctx context.Context, m *models.MailList) 
 	o.UpdatedByUserID = func() null.Val[int32] { return m.UpdatedByUserID }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
+	o.Archived = func() bool { return m.Archived }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
@@ -357,6 +358,7 @@ func (f *Factory) fromExistingMailTemplate(ctx context.Context, m *models.MailTe
 	o.UpdatedByUserID = func() null.Val[int32] { return m.UpdatedByUserID }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
+	o.Archived = func() bool { return m.Archived }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
@@ -422,6 +424,7 @@ func (f *Factory) fromExistingMailing(ctx context.Context, m *models.Mailing) *M
 	o.UpdatedByUserID = func() null.Val[int32] { return m.UpdatedByUserID }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
+	o.Archived = func() bool { return m.Archived }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))

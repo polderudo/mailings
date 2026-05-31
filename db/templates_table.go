@@ -11,6 +11,8 @@ import (
 type MailTemplateCriteria struct {
 	Name    string
 	Subject string
+	// Archived: "" oder "active" => nur aktive; "archived" => nur archivierte; "all" => alle.
+	Archived string
 }
 
 type mailTemplateRowScan struct {
@@ -27,6 +29,14 @@ func QueryMailTemplateRows(ctx context.Context, p PaginationData, criteria MailT
 	}
 	if criteria.Subject != "" {
 		q.Apply(mq.SelectWhere.MailTemplates.Subject.ILike(Like(criteria.Subject)))
+	}
+	switch criteria.Archived {
+	case "archived":
+		q.Apply(mq.SelectWhere.MailTemplates.Archived.EQ(true))
+	case "all":
+		// kein Filter
+	default: // "" oder "active"
+		q.Apply(mq.SelectWhere.MailTemplates.Archived.EQ(false))
 	}
 
 	return QueryPaginated[mailTemplateRowScan, *mq.MailTemplate](

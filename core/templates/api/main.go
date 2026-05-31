@@ -26,6 +26,7 @@ func CreateRoutes(rUser *mw.UserGroup) {
 	rUser.AddNamedRoute(router.Templates.Detail, "/templates/:id/", templatesApi.TemplateDetailPage, http.MethodGet)
 	rUser.AddNamedRoute(router.Templates.Update, "/templates/:id/", templatesApi.TemplateUpdate, http.MethodPost)
 	rUser.AddNamedRoute(router.Templates.Delete, "/templates/:id/", templatesApi.TemplateDelete, http.MethodDelete)
+	rUser.AddNamedRoute(router.Templates.Archive, "/templates/:id/archive/", templatesApi.TemplateArchive, http.MethodPost)
 }
 
 func isHXRequest(c *mw.UserContext) bool {

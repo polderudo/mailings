@@ -45,6 +45,7 @@ type MailTemplateTemplate struct {
 	UpdatedByUserID func() null.Val[int32]
 	CreatedAt       func() time.Time
 	UpdatedAt       func() null.Val[time.Time]
+	Archived        func() bool
 
 	r mailTemplateR
 	f *Factory
@@ -144,6 +145,10 @@ func (o MailTemplateTemplate) BuildSetter() *models.MailTemplateSetter {
 		val := o.UpdatedAt()
 		m.UpdatedAt = omitnull.FromNull(val)
 	}
+	if o.Archived != nil {
+		val := o.Archived()
+		m.Archived = omit.From(val)
+	}
 
 	return m
 }
@@ -189,6 +194,9 @@ func (o MailTemplateTemplate) Build() *models.MailTemplate {
 	}
 	if o.UpdatedAt != nil {
 		m.UpdatedAt = o.UpdatedAt()
+	}
+	if o.Archived != nil {
+		m.Archived = o.Archived()
 	}
 
 	o.setModelRels(m)
@@ -399,6 +407,7 @@ func (m mailTemplateMods) RandomizeAllColumns(f *faker.Faker) MailTemplateMod {
 		MailTemplateMods.RandomUpdatedByUserID(f),
 		MailTemplateMods.RandomCreatedAt(f),
 		MailTemplateMods.RandomUpdatedAt(f),
+		MailTemplateMods.RandomArchived(f),
 	}
 }
 
@@ -712,6 +721,37 @@ func (m mailTemplateMods) RandomUpdatedAtNotNull(f *faker.Faker) MailTemplateMod
 
 			val := random_time_Time(f)
 			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailTemplateMods) Archived(val bool) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Archived = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailTemplateMods) ArchivedFunc(f func() bool) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Archived = f
+	})
+}
+
+// Clear any values for the column
+func (m mailTemplateMods) UnsetArchived() MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Archived = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailTemplateMods) RandomArchived(f *faker.Faker) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Archived = func() bool {
+			return random_bool(f)
 		}
 	})
 }

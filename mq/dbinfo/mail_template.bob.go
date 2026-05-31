@@ -87,6 +87,15 @@ var MailTemplates = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		Archived: column{
+			Name:      "archived",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: mailTemplateIndexes{
 		MailTemplatePkey: index{
@@ -162,11 +171,12 @@ type mailTemplateColumns struct {
 	UpdatedByUserID column
 	CreatedAt       column
 	UpdatedAt       column
+	Archived        column
 }
 
 func (c mailTemplateColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.Subject, c.BodyHTML, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.Name, c.Subject, c.BodyHTML, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived,
 	}
 }
 

@@ -13,16 +13,17 @@ import (
 
 // listsCols beschreibt die Spalten der Email-Listen-Tabelle.
 // recipient_count ist eine abgeleitete Spalte (Subselect in QueryMailListRows).
-func listsCols(ctx context.Context) []datatable.ColumnDef {
+func listsCols(ctx context.Context, archived string) []datatable.ColumnDef {
 	return []datatable.ColumnDef{
 		{Field: "name", Label: Trl(ctx, L.Lists.ListName), Sortable: true, Filterable: true},
 		{Field: "description", Label: Trl(ctx, L.Lists.ListDescription), Sortable: true, Filterable: true},
 		{Field: "recipient_count", Label: Trl(ctx, L.Lists.NumberOfRecipients), Sortable: true, Class: "w-32"},
+		{Field: "archived", Label: Trl(ctx, L.Ui.Archived), Filterable: true, Class: "w-36", FilterComponent: archivedFilter(ctx, archived)},
 	}
 }
 
 templ ListsTable(rows []db.MailListWithCount, state datatable.TableState) {
-	@datatable.Table(listsCols(ctx), state) {
+	@datatable.Table(listsCols(ctx, state.Filters["archived"]), state) {
 		for _, ml := range rows {
 			@listsRow(ml)
 		}
@@ -48,5 +49,20 @@ templ listsRow(ml db.MailListWithCount) {
 		@table.Cell() {
 			{ strconv.FormatInt(ml.RecipientCount, 10) }
 		}
+		@table.Cell() {
+			if ml.Archived {
+				<span class="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">{ Trl(ctx, L.Ui.Archived) }</span>
+			}
+		}
 	}
+}
+
+// archivedFilter rendert das Tri-State-<select> für den Archiv-Filter.
+// Leerer Wert == "active" (Default: nur nicht-archivierte anzeigen).
+templ archivedFilter(ctx context.Context, current string) {
+	<select name="archived" class="dt-filter h-7 w-full rounded-md border border-input bg-transparent px-2 text-sm">
+		<option value="active" selected?={ current == "" || current == "active" }>{ Trl(ctx, L.Users.Active) }</option>
+		<option value="archived" selected?={ current == "archived" }>{ Trl(ctx, L.Ui.Archived) }</option>
+		<option value="all" selected?={ current == "all" }>{ Trl(ctx, L.General.All) }</option>
+	</select>
 }

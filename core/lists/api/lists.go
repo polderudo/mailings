@@ -40,6 +40,7 @@ func (m *api) ListsPage(c *mw.UserContext) error {
 	bind := db.BindPaginated(c, defaultPageSize, func(b *db.FilterBinder, criteria *db.MailListCriteria) {
 		b.String("name", &criteria.Name)
 		b.String("description", &criteria.Description)
+		b.String("archived", &criteria.Archived)
 	})
 	rows, total, err := db.QueryMailListRows(c.Request().Context(), bind.Pagination, bind.Criteria)
 	if err != nil {
@@ -97,6 +98,7 @@ func (m *api) ListDetailPage(c *mw.UserContext) error {
 		ID:              l.ID,
 		Name:            l.Name,
 		Description:     l.Description,
+		Archived:        l.Archived,
 		IsNew:           false,
 		RecipientsRows:  rows,
 		RecipientsState: state,
@@ -224,6 +226,7 @@ func (m *api) ListUpdate(c *mw.UserContext) error {
 		ID:          l.ID,
 		Name:        l.Name,
 		Description: l.Description,
+		Archived:    l.Archived,
 		IsNew:       false,
 	}
 	return views.RenderWithToast(c,
@@ -344,6 +347,58 @@ func (m *api) ListDelete(c *mw.UserContext) error {
 	return c.NoContent(200)
 }
 
+// ListRecipientAdd fügt einen einzelnen Empfänger direkt zur Liste hinzu
+// (Formular im Recipients-Panel). Re-rendert das ListRecipientsPanel mit dem
+// aktualisierten Stand — analog zu Import und Delete.
+func (m *api) ListRecipientAdd(c *mw.UserContext) error {
+	listID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid list id: %w", err)
+	}
+	ctx := context.Background()
+	l, err := mq.FindMailList(ctx, db.DBob, int32(listID))
+	if err != nil || l == nil {
+		return fmt.Errorf("list not found")
+	}
+
+	email := strings.TrimSpace(c.FormValue("email"))
+	if email == "" || !strings.Contains(email, "@") {
+		return views.ToastError(c,
+			i18n.TrLang(c.Lang, i18n.L.Ui.Error),
+			i18n.TrLang(c.Lang, i18n.L.Lists.RecipientEmailRequired),
+		)
+	}
+	forename := strings.TrimSpace(c.FormValue("forename"))
+	lastname := strings.TrimSpace(c.FormValue("lastname"))
+
+	_, err = mq.MailListRecipients.Insert(&mq.MailListRecipientSetter{
+		ListID:   omit.From(l.ID),
+		Email:    omit.From(email),
+		Forename: omit.From(forename),
+		Lastname: omit.From(lastname),
+	}).One(ctx, db.DBob)
+	if err != nil {
+		// Häufigster Fehler ist die UNIQUE-Constraint (list_id, lower(email)).
+		msg := i18n.TrLang(c.Lang, i18n.L.Lists.RecipientAlreadyExists)
+		low := strings.ToLower(err.Error())
+		if !strings.Contains(low, "duplicate") && !strings.Contains(low, "unique") {
+			msg = err.Error()
+		}
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), msg)
+	}
+
+	rows, state, err := loadInitialRecipientsPanel(ctx, l.ID)
+	if err != nil {
+		return err
+	}
+	return views.RenderWithToast(c,
+		listsview.ListRecipientsPanel(c.Lang, l.ID, rows, state),
+		"success",
+		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
+		i18n.TrLang(c.Lang, i18n.L.Lists.RecipientAdded),
+	)
+}
+
 // ListRecipientDelete entfernt einen einzelnen Empfänger aus einer Liste.
 // Re-rendert das ListRecipientsPanel mit dem aktualisierten Stand.
 func (m *api) ListRecipientDelete(c *mw.UserContext) error {
@@ -378,4 +433,27 @@ func (m *api) ListRecipientDelete(c *mw.UserContext) error {
 		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
 		i18n.TrLang(c.Lang, i18n.L.Lists.RecipientRemoved),
 	)
+}
+
+// ListArchive invertiert das archived-Flag der Liste und leitet via HX-Redirect
+// zurück auf die Detailseite.
+func (m *api) ListArchive(c *mw.UserContext) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid list id: %w", err)
+	}
+	ctx := context.Background()
+	l, err := mq.FindMailList(ctx, db.DBob, int32(id))
+	if err != nil || l == nil {
+		return fmt.Errorf("list not found")
+	}
+	if err := l.Update(ctx, db.DBob, &mq.MailListSetter{
+		Archived:        omit.From(!l.Archived),
+		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
+		UpdatedAt:       omitnull.From(time.Now()),
+	}); err != nil {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
+	}
+	c.Response().Header().Set("HX-Redirect", router.Reverse(router.Lists.Detail, strconv.Itoa(int(l.ID))))
+	return c.NoContent(200)
 }

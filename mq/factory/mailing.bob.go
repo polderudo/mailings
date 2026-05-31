@@ -56,6 +56,7 @@ type MailingTemplate struct {
 	UpdatedByUserID             func() null.Val[int32]
 	CreatedAt                   func() time.Time
 	UpdatedAt                   func() null.Val[time.Time]
+	Archived                    func() bool
 
 	r mailingR
 	f *Factory
@@ -232,6 +233,10 @@ func (o MailingTemplate) BuildSetter() *models.MailingSetter {
 		val := o.UpdatedAt()
 		m.UpdatedAt = omitnull.FromNull(val)
 	}
+	if o.Archived != nil {
+		val := o.Archived()
+		m.Archived = omit.From(val)
+	}
 
 	return m
 }
@@ -310,6 +315,9 @@ func (o MailingTemplate) Build() *models.Mailing {
 	}
 	if o.UpdatedAt != nil {
 		m.UpdatedAt = o.UpdatedAt()
+	}
+	if o.Archived != nil {
+		m.Archived = o.Archived()
 	}
 
 	o.setModelRels(m)
@@ -631,6 +639,7 @@ func (m mailingMods) RandomizeAllColumns(f *faker.Faker) MailingMod {
 		MailingMods.RandomUpdatedByUserID(f),
 		MailingMods.RandomCreatedAt(f),
 		MailingMods.RandomUpdatedAt(f),
+		MailingMods.RandomArchived(f),
 	}
 }
 
@@ -1351,6 +1360,37 @@ func (m mailingMods) RandomUpdatedAtNotNull(f *faker.Faker) MailingMod {
 
 			val := random_time_Time(f)
 			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) Archived(val bool) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Archived = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) ArchivedFunc(f func() bool) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Archived = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetArchived() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Archived = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailingMods) RandomArchived(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Archived = func() bool {
+			return random_bool(f)
 		}
 	})
 }

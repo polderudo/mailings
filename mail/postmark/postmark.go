@@ -25,9 +25,38 @@ import (
 const (
 	defaultBaseURL = "https://api.postmarkapp.com"
 	// maxBulkMessages ist das Postmark-Limit pro /email/bulk-Request.
-	maxBulkMessages = 500
-	httpTimeout     = 30 * time.Second
+	maxBulkMessages = 5000
+	httpTimeout     = 60 * time.Second
 )
+
+// unsubscribeToken ist der Postmark-Merge-Token, den Broadcast-Message-Streams
+// pro Empfänger durch eine eindeutige One-Click-Unsubscribe-URL ersetzen. Er
+// MUSS unverändert (dreifache geschweifte Klammern inkl. Leerzeichen) im
+// HtmlBody landen. Siehe:
+// https://postmarkapp.com/support/article/1208-how-to-add-an-unsubscribe-link
+const unsubscribeToken = "{{{ pm:unsubscribe }}}"
+
+// unsubscribeFooterHTML wird an jeden ausgehenden Broadcast-HTML-Body angehängt,
+// damit jede Mail garantiert einen eindeutigen Abmelde-Link enthält. Text /
+// Styling hier zentral editierbar. Das href nutzt den Postmark-Unsubscribe-
+// Merge-Token, den Postmark auf Broadcast-Streams pro Empfänger auflöst.
+const unsubscribeFooterHTML = `<p style="font-size:12px;color:#888;margin:24px"><strong>legal disclaimer</strong><br><br>Es liegt nicht in unserer Absicht, Ihnen unerwünschte Informationen per E-Mail zukommen zu lassen. Sie erhalten diese E-Mail als unser Kunde oder weil wir Sie als Interessenten für unsere Newsletter zum Thema Schule/Bildung in unserer Datenbank führen. Falls Sie zukünftig keine Information mehr erhalten möchten, können Sie sich vom Newsletter einfach <a href="{{{ pm:unsubscribe }}}">hier abmelden</a> und wir löschen Ihre Daten umgehend und vollständig.</p>`
+
+// withUnsubscribeFooter hängt den Abmelde-Footer an den HTML-Body an. Idempotent:
+// enthält der Body den Unsubscribe-Token bereits (z. B. manuell im Template
+// platziert oder bereits angehängt), bleibt er unverändert. Liegt ein
+// vollständiges HTML-Dokument vor, wird der Footer direkt vor das schließende
+// </body>-Tag eingefügt, sonst angehängt.
+func withUnsubscribeFooter(htmlBody string) string {
+	if strings.Contains(htmlBody, unsubscribeToken) {
+		return htmlBody
+	}
+	lower := strings.ToLower(htmlBody)
+	if idx := strings.LastIndex(lower, "</body>"); idx >= 0 {
+		return htmlBody[:idx] + unsubscribeFooterHTML + htmlBody[idx:]
+	}
+	return htmlBody + unsubscribeFooterHTML
+}
 
 // Client kapselt die Postmark Bulk-Email-API.
 // Wird per `conf.C.Postmark.ServerToken` initialisiert.
@@ -124,6 +153,9 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 	if err != nil {
 		return c.fail(ctx, m, "render html: "+err.Error())
 	}
+	// Abmelde-Footer mit Postmark-Unsubscribe-Token zentral anhängen, damit jede
+	// versendete Mail einen eindeutigen Abmelde-Link enthält (Broadcast-Stream).
+	htmlBody = withUnsubscribeFooter(htmlBody)
 
 	from := d.FromEmail
 	if strings.TrimSpace(d.FromName) != "" {

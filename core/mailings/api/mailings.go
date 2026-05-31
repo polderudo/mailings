@@ -29,6 +29,7 @@ func (m *api) MailingsPage(c *mw.UserContext) error {
 	bind := db.BindPaginated(c, 50, func(b *db.FilterBinder, criteria *db.MailingCriteria) {
 		b.String("name", &criteria.Name)
 		b.String("status", &criteria.Status)
+		b.String("archived", &criteria.Archived)
 	})
 	rows, total, err := db.QueryMailingRows(c.Request().Context(), bind.Pagination, bind.Criteria)
 	if err != nil {
@@ -61,6 +62,7 @@ func (m *api) MailingNewPage(c *mw.UserContext) error {
 		return err
 	}
 	lists, err := mq.MailLists.Query(
+		sm.Where(mq.MailLists.Columns.Archived.EQ(psql.Arg(false))),
 		sm.OrderBy(mq.MailLists.Columns.ID).Desc(),
 	).All(ctx, db.DBob)
 	if err != nil {
@@ -109,7 +111,7 @@ func (m *api) MailingDetailPage(c *mw.UserContext) error {
 }
 
 func loadMailingDetail(ctx context.Context, mailing *mq.Mailing) (mailingsview.MailingDetailData, error) {
-	data := mailingsview.MailingDetailData{Mailing: mailing}
+	data := mailingsview.MailingDetailData{Mailing: mailing, Archived: mailing.Archived}
 	if t, err := mq.FindMailTemplate(ctx, db.DBob, mailing.TemplateID); err == nil && t != nil {
 		data.TemplateName = t.Name
 	}
@@ -215,4 +217,27 @@ func (m *api) MailingStart(c *mw.UserContext) error {
 		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
 		i18n.TrLang(c.Lang, i18n.L.Mailings.SendingStarted),
 	)
+}
+
+// MailingArchive invertiert das archived-Flag des Mailings und leitet via
+// HX-Redirect zurück auf die Detailseite.
+func (m *api) MailingArchive(c *mw.UserContext) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid mailing id: %w", err)
+	}
+	ctx := context.Background()
+	mailing, err := mq.FindMailing(ctx, db.DBob, int32(id))
+	if err != nil || mailing == nil {
+		return fmt.Errorf("mailing not found")
+	}
+	if err := mailing.Update(ctx, db.DBob, &mq.MailingSetter{
+		Archived:        omit.From(!mailing.Archived),
+		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
+		UpdatedAt:       omitnull.From(time.Now()),
+	}); err != nil {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
+	}
+	c.Response().Header().Set("HX-Redirect", router.Reverse(router.Mailings.Detail, strconv.Itoa(int(mailing.ID))))
+	return c.NoContent(200)
 }

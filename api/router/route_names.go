@@ -26,16 +26,16 @@ func init() { mustOK("General", EnsureAllFieldsSet(General)) }
 
 // Anon – öffentliche (unauthentifizierte) Routen rund um Login & Passwort.
 var Anon = struct {
-	LoginPage             string
-	Login                 string
-	Logoff                string
-	ForgotPasswordPage    string
-	ForgotPassword        string
-	PasswordCreatePage    string
+	LoginPage              string
+	Login                  string
+	Logoff                 string
+	ForgotPasswordPage     string
+	ForgotPassword         string
+	PasswordCreatePage     string
 	SetPasswordByTokenPage string
-	SetPasswordByToken    string
-	CheckUserToken        string
-	Language              string
+	SetPasswordByToken     string
+	CheckUserToken         string
+	Language               string
 }{
 	LoginPage:              "anon_login_page",
 	Login:                  "anon_login",
@@ -53,7 +53,7 @@ func init() { mustOK("Anon", EnsureAllFieldsSet(Anon)) }
 
 // Auth – authentifizierte Account-Endpoints (Refresh-Token, eigenes Passwort).
 var Auth = struct {
-	Refresh                  string
+	Refresh                   string
 	SetPasswordForCurrentUser string
 }{
 	Refresh:                   "auth_refresh",
@@ -149,19 +149,21 @@ func init() { mustOK("JsLog", EnsureAllFieldsSet(JsLog)) }
 
 // Templates – Routen für das HTML-Template-Modul.
 var Templates = struct {
-	List   string
-	New    string
-	Detail string
-	Create string
-	Update string
-	Delete string
+	List    string
+	New     string
+	Detail  string
+	Create  string
+	Update  string
+	Delete  string
+	Archive string
 }{
-	List:   "templates_list",
-	New:    "templates_new",
-	Detail: "templates_detail",
-	Create: "templates_create",
-	Update: "templates_update",
-	Delete: "templates_delete",
+	List:    "templates_list",
+	New:     "templates_new",
+	Detail:  "templates_detail",
+	Create:  "templates_create",
+	Update:  "templates_update",
+	Delete:  "templates_delete",
+	Archive: "templates_archive",
 }
 
 func init() { mustOK("Templates", EnsureAllFieldsSet(Templates)) }
@@ -177,6 +179,8 @@ var Lists = struct {
 	Delete          string
 	Recipients      string // datatable-Endpoint für Empfänger (GET + POST)
 	DeleteRecipient string
+	AddRecipient    string
+	Archive         string
 }{
 	List:            "lists_list",
 	New:             "lists_new",
@@ -187,23 +191,27 @@ var Lists = struct {
 	Delete:          "lists_delete",
 	Recipients:      "lists_recipients",
 	DeleteRecipient: "lists_delete_recipient",
+	AddRecipient:    "lists_add_recipient",
+	Archive:         "lists_archive",
 }
 
 func init() { mustOK("Lists", EnsureAllFieldsSet(Lists)) }
 
 // Mailings – Routen für das Versand-Modul.
 var Mailings = struct {
-	List   string
-	New    string
-	Detail string
-	Create string
-	Start  string
+	List    string
+	New     string
+	Detail  string
+	Create  string
+	Start   string
+	Archive string
 }{
-	List:   "mailings_list",
-	New:    "mailings_new",
-	Detail: "mailings_detail",
-	Create: "mailings_create",
-	Start:  "mailings_start",
+	List:    "mailings_list",
+	New:     "mailings_new",
+	Detail:  "mailings_detail",
+	Create:  "mailings_create",
+	Start:   "mailings_start",
+	Archive: "mailings_archive",
 }
 
 func init() { mustOK("Mailings", EnsureAllFieldsSet(Mailings)) }

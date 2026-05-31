@@ -12,6 +12,8 @@ import (
 type MailingCriteria struct {
 	Name   string
 	Status string
+	// Archived: "" oder "active" => nur aktive; "archived" => nur archivierte; "all" => alle.
+	Archived string
 }
 
 // MailingWithMeta ist die View-Typ-Repräsentation eines Mailings inkl.
@@ -52,6 +54,14 @@ func QueryMailingRows(ctx context.Context, p PaginationData, criteria MailingCri
 	}
 	if criteria.Status != "" {
 		q.Apply(mq.SelectWhere.Mailings.Status.ILike(Like(criteria.Status)))
+	}
+	switch criteria.Archived {
+	case "archived":
+		q.Apply(mq.SelectWhere.Mailings.Archived.EQ(true))
+	case "all":
+		// kein Filter
+	default: // "" oder "active"
+		q.Apply(mq.SelectWhere.Mailings.Archived.EQ(false))
 	}
 
 	return QueryPaginated[mailingRowScan, MailingWithMeta](

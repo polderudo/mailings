@@ -13,6 +13,8 @@ import (
 type MailListCriteria struct {
 	Name        string
 	Description string
+	// Archived: "" oder "active" => nur aktive; "archived" => nur archivierte; "all" => alle.
+	Archived string
 }
 
 // MailListWithCount ist der View-Typ pro Tabellenzeile: voller MailList-Datensatz
@@ -42,6 +44,14 @@ func QueryMailListRows(ctx context.Context, p PaginationData, criteria MailListC
 	}
 	if criteria.Description != "" {
 		q.Apply(mq.SelectWhere.MailLists.Description.ILike(Like(criteria.Description)))
+	}
+	switch criteria.Archived {
+	case "archived":
+		q.Apply(mq.SelectWhere.MailLists.Archived.EQ(true))
+	case "all":
+		// kein Filter
+	default: // "" oder "active"
+		q.Apply(mq.SelectWhere.MailLists.Archived.EQ(false))
 	}
 
 	return QueryPaginated[mailListRowScan, MailListWithCount](

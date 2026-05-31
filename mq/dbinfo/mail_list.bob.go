@@ -78,6 +78,15 @@ var MailLists = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		Archived: column{
+			Name:      "archived",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: mailListIndexes{
 		MailListPkey: index{
@@ -152,11 +161,12 @@ type mailListColumns struct {
 	UpdatedByUserID column
 	CreatedAt       column
 	UpdatedAt       column
+	Archived        column
 }
 
 func (c mailListColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.Description, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.Name, c.Description, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived,
 	}
 }
 

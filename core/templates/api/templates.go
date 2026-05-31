@@ -26,6 +26,7 @@ func (m *api) TemplatesPage(c *mw.UserContext) error {
 	bind := db.BindPaginated(c, 50, func(b *db.FilterBinder, criteria *db.MailTemplateCriteria) {
 		b.String("name", &criteria.Name)
 		b.String("subject", &criteria.Subject)
+		b.String("archived", &criteria.Archived)
 	})
 	rows, total, err := db.QueryMailTemplateRows(c.Request().Context(), bind.Pagination, bind.Criteria)
 	if err != nil {
@@ -70,6 +71,7 @@ func (m *api) TemplateDetailPage(c *mw.UserContext) error {
 		Name:     t.Name,
 		Subject:  t.Subject,
 		BodyHTML: t.BodyHTML,
+		Archived: t.Archived,
 		IsNew:    false,
 		Snippets: snippet.All(),
 	}
@@ -141,6 +143,7 @@ func (m *api) TemplateUpdate(c *mw.UserContext) error {
 		Name:     t.Name,
 		Subject:  t.Subject,
 		BodyHTML: t.BodyHTML,
+		Archived: t.Archived,
 		IsNew:    false,
 		Snippets: snippet.All(),
 	}
@@ -180,5 +183,28 @@ func (m *api) TemplateDelete(c *mw.UserContext) error {
 		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
 	}
 	c.Response().Header().Set("HX-Redirect", router.Reverse(router.Templates.List))
+	return c.NoContent(200)
+}
+
+// TemplateArchive invertiert das archived-Flag des Templates und leitet via
+// HX-Redirect zurück auf die Detailseite.
+func (m *api) TemplateArchive(c *mw.UserContext) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid template id: %w", err)
+	}
+	ctx := context.Background()
+	t, err := mq.FindMailTemplate(ctx, db.DBob, int32(id))
+	if err != nil || t == nil {
+		return fmt.Errorf("template not found")
+	}
+	if err := t.Update(ctx, db.DBob, &mq.MailTemplateSetter{
+		Archived:        omit.From(!t.Archived),
+		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
+		UpdatedAt:       omitnull.From(time.Now()),
+	}); err != nil {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
+	}
+	c.Response().Header().Set("HX-Redirect", router.Reverse(router.Templates.Detail, strconv.Itoa(int(t.ID))))
 	return c.NoContent(200)
 }

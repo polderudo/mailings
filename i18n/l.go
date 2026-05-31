@@ -224,6 +224,10 @@ var L = struct {
 		ThisWillPermanentlyRemoveTheRecipK5lat5y3 int
 		RecipientRemoved int
 		RecipientNotFound int
+		AddRecipient int
+		RecipientAdded int
+		RecipientAlreadyExists int
+		RecipientEmailRequired int
 	}
 	Mailings struct {
 		Mailings int
@@ -326,6 +330,9 @@ var L = struct {
 		ThePageYouAreLookingForDoesNotExist int
 		GoToHome int
 		Error int
+		Archive int
+		Restore int
+		Archived int
 	}
 	Users struct {
 		AllUsers int
@@ -792,6 +799,10 @@ var L = struct {
 		ThisWillPermanentlyRemoveTheRecipK5lat5y3 int
 		RecipientRemoved int
 		RecipientNotFound int
+		AddRecipient int
+		RecipientAdded int
+		RecipientAlreadyExists int
+		RecipientEmailRequired int
 	}{
 		EmailLists: LK_email_lists,
 		AllEmailLists: LK_all_email_lists,
@@ -820,6 +831,10 @@ var L = struct {
 		ThisWillPermanentlyRemoveTheRecipK5lat5y3: LK_this_will_permanently_remove_the_recip_k5lat5y3,
 		RecipientRemoved: LK_recipient_removed,
 		RecipientNotFound: LK_recipient_not_found,
+		AddRecipient: LK_add_recipient,
+		RecipientAdded: LK_recipient_added,
+		RecipientAlreadyExists: LK_recipient_already_exists,
+		RecipientEmailRequired: LK_recipient_email_required,
 	},
 	Mailings: struct {
 		Mailings int
@@ -991,6 +1006,9 @@ var L = struct {
 		ThePageYouAreLookingForDoesNotExist int
 		GoToHome int
 		Error int
+		Archive int
+		Restore int
+		Archived int
 	}{
 		Hello: LK_hello,
 		English: LK_english,
@@ -1020,6 +1038,9 @@ var L = struct {
 		ThePageYouAreLookingForDoesNotExist: LK_the_page_you_are_looking_for_does_not_exist,
 		GoToHome: LK_go_to_home,
 		Error: LK_error,
+		Archive: LK_archive,
+		Restore: LK_restore,
+		Archived: LK_archived,
 	},
 	Users: struct {
 		AllUsers int

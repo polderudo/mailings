@@ -215,6 +215,10 @@ const(
 	LK_this_will_permanently_remove_the_recip_k5lat5y3
 	LK_recipient_removed
 	LK_recipient_not_found
+	LK_add_recipient
+	LK_recipient_added
+	LK_recipient_already_exists
+	LK_recipient_email_required
 	LK_mailings
 	LK_all_mailings
 	LK_new_mailing
@@ -309,6 +313,9 @@ const(
 	LK_the_page_you_are_looking_for_does_not_exist
 	LK_go_to_home
 	LK_error
+	LK_archive
+	LK_restore
+	LK_archived
 	LK_all_users
 	LK_list_of_all_registered_users
 	LK_id

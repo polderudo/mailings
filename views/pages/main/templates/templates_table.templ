@@ -21,16 +21,17 @@ func templateUpdatedDisplay(t *mq.MailTemplate) string {
 	return ts.Format("2006-01-02 15:04")
 }
 
-func templatesCols(ctx context.Context) []datatable.ColumnDef {
+func templatesCols(ctx context.Context, archived string) []datatable.ColumnDef {
 	return []datatable.ColumnDef{
 		{Field: "name", Label: Trl(ctx, L.Templates.TemplateName), Sortable: true, Filterable: true},
 		{Field: "subject", Label: Trl(ctx, L.Templates.MailSubject), Sortable: true, Filterable: true},
 		{Field: "updated_at", Label: Trl(ctx, L.Users.CreatedAt), Sortable: true, Class: "w-48"},
+		{Field: "archived", Label: Trl(ctx, L.Ui.Archived), Filterable: true, Class: "w-36", FilterComponent: archivedFilter(ctx, archived)},
 	}
 }
 
 templ TemplatesTable(rows []*mq.MailTemplate, state datatable.TableState) {
-	@datatable.Table(templatesCols(ctx), state) {
+	@datatable.Table(templatesCols(ctx, state.Filters["archived"]), state) {
 		for _, t := range rows {
 			@templatesRow(t)
 		}
@@ -56,5 +57,20 @@ templ templatesRow(t *mq.MailTemplate) {
 		@table.Cell() {
 			{ templateUpdatedDisplay(t) }
 		}
+		@table.Cell() {
+			if t.Archived {
+				<span class="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">{ Trl(ctx, L.Ui.Archived) }</span>
+			}
+		}
 	}
+}
+
+// archivedFilter rendert das Tri-State-<select> für den Archiv-Filter.
+// Leerer Wert == "active" (Default: nur nicht-archivierte anzeigen).
+templ archivedFilter(ctx context.Context, current string) {
+	<select name="archived" class="dt-filter h-7 w-full rounded-md border border-input bg-transparent px-2 text-sm">
+		<option value="active" selected?={ current == "" || current == "active" }>{ Trl(ctx, L.Users.Active) }</option>
+		<option value="archived" selected?={ current == "archived" }>{ Trl(ctx, L.Ui.Archived) }</option>
+		<option value="all" selected?={ current == "all" }>{ Trl(ctx, L.General.All) }</option>
+	</select>
 }

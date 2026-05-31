@@ -44,6 +44,7 @@ type MailListTemplate struct {
 	UpdatedByUserID func() null.Val[int32]
 	CreatedAt       func() time.Time
 	UpdatedAt       func() null.Val[time.Time]
+	Archived        func() bool
 
 	r mailListR
 	f *Factory
@@ -157,6 +158,10 @@ func (o MailListTemplate) BuildSetter() *models.MailListSetter {
 		val := o.UpdatedAt()
 		m.UpdatedAt = omitnull.FromNull(val)
 	}
+	if o.Archived != nil {
+		val := o.Archived()
+		m.Archived = omit.From(val)
+	}
 
 	return m
 }
@@ -199,6 +204,9 @@ func (o MailListTemplate) Build() *models.MailList {
 	}
 	if o.UpdatedAt != nil {
 		m.UpdatedAt = o.UpdatedAt()
+	}
+	if o.Archived != nil {
+		m.Archived = o.Archived()
 	}
 
 	o.setModelRels(m)
@@ -429,6 +437,7 @@ func (m mailListMods) RandomizeAllColumns(f *faker.Faker) MailListMod {
 		MailListMods.RandomUpdatedByUserID(f),
 		MailListMods.RandomCreatedAt(f),
 		MailListMods.RandomUpdatedAt(f),
+		MailListMods.RandomArchived(f),
 	}
 }
 
@@ -711,6 +720,37 @@ func (m mailListMods) RandomUpdatedAtNotNull(f *faker.Faker) MailListMod {
 
 			val := random_time_Time(f)
 			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailListMods) Archived(val bool) MailListMod {
+	return MailListModFunc(func(_ context.Context, o *MailListTemplate) {
+		o.Archived = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailListMods) ArchivedFunc(f func() bool) MailListMod {
+	return MailListModFunc(func(_ context.Context, o *MailListTemplate) {
+		o.Archived = f
+	})
+}
+
+// Clear any values for the column
+func (m mailListMods) UnsetArchived() MailListMod {
+	return MailListModFunc(func(_ context.Context, o *MailListTemplate) {
+		o.Archived = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailListMods) RandomArchived(f *faker.Faker) MailListMod {
+	return MailListModFunc(func(_ context.Context, o *MailListTemplate) {
+		o.Archived = func() bool {
+			return random_bool(f)
 		}
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"app/mail/snippet"
 	"app/mq"
 	. "app/views/layout"
+	"context"
 	"encoding/json"
 	"strconv"
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
@@ -20,6 +21,7 @@ type TemplateFormData struct {
 	Name     string
 	Subject  string
 	BodyHTML string
+	Archived bool
 	IsNew    bool
 	Snippets []snippet.Snippet
 }
@@ -131,15 +133,26 @@ templ TemplateForm(lang string, data TemplateFormData) {
 		}
 		<div class="flex justify-between items-center pt-2">
 			if !data.IsNew {
-				@uibutton.Button(uibutton.Props{
-					Color: "secondary",
-					Size:  "sm",
-					Label: Trl(ctx, L.Templates.DeleteTemplate),
-					Attrs: templ.Attributes{
-						"hx-delete":  router.Reverse(router.Templates.Delete, strconv.Itoa(int(data.ID))),
-						"hx-confirm": Trl(ctx, L.Templates.DeleteTemplate) + "?",
-					},
-				})
+				<div class="flex gap-2">
+					@uibutton.Button(uibutton.Props{
+						Color: "secondary",
+						Size:  "sm",
+						Label: Trl(ctx, L.Templates.DeleteTemplate),
+						Attrs: templ.Attributes{
+							"hx-delete":  router.Reverse(router.Templates.Delete, strconv.Itoa(int(data.ID))),
+							"hx-confirm": Trl(ctx, L.Templates.DeleteTemplate) + "?",
+						},
+					})
+					@uibutton.Button(uibutton.Props{
+						Color: "secondary",
+						Size:  "sm",
+						Label: archiveLabel(ctx, data.Archived),
+						Attrs: templ.Attributes{
+							"type":    "button",
+							"hx-post": router.Reverse(router.Templates.Archive, strconv.Itoa(int(data.ID))),
+						},
+					})
+				</div>
 			} else {
 				<span></span>
 			}
@@ -151,6 +164,14 @@ templ TemplateForm(lang string, data TemplateFormData) {
 			})
 		</div>
 	}
+}
+
+// archiveLabel liefert "Wiederherstellen" wenn archiviert, sonst "Archivieren".
+func archiveLabel(ctx context.Context, archived bool) string {
+	if archived {
+		return Trl(ctx, L.Ui.Restore)
+	}
+	return Trl(ctx, L.Ui.Archive)
 }
 
 // snippetsJSON liefert die Snippet-Liste als JSON-Array für TinyMCE's
@@ -281,7 +302,18 @@ templ tinymceInitScript() {
 				if (!window.tinymce) { whenTinyMCEReady(initEditor); return; }
 				const ta = document.getElementById('template-editor');
 				if (!ta) return;
-				if (window.tinymce.get && window.tinymce.get('template-editor')) return;
+				// Vorhandene Instanz nur dann als gültig akzeptieren, wenn sie an GENAU
+				// dieses im DOM hängende textarea gebunden ist. Nach einem htmx-Swap
+				// (z. B. nach dem Speichern) ist das alte textarea durch ein neues mit
+				// derselben ID ersetzt; TinyMCE hält dann evtl. noch eine Instanz auf das
+				// detachte alte Element. Diese stale Instanz entfernen und neu init'en —
+				// sonst bliebe das neue textarea unsichtbar und der Editor 'verschwindet'.
+				const existing = window.tinymce.get ? window.tinymce.get('template-editor') : null;
+				if (existing) {
+					const boundEl = existing.getElement ? existing.getElement() : null;
+					if (boundEl === ta && document.body.contains(ta)) return;
+					try { existing.remove(); } catch (e) {}
+				}
 				if (initPromise) return;
 				try {
 					(window.tinymce.editors || []).slice().forEach(function(ed) {
@@ -392,11 +424,19 @@ templ tinymceInitScript() {
 			// die Parameter eingesammelt werden.
 			document.body.addEventListener('htmx:configRequest', function(evt) {
 				if (!window.tinymce) return;
+				// Guard: dieser Listener hängt an document.body und feuert bei JEDEM
+				// htmx-Request (auch geboostete Nav-Links via hx-boost). Ohne Guard
+				// würde body_html an fremde GET-Requests angehängt und landete als
+				// Query-String in der URL (`/?body_html=...`), was Navigation/History
+				// verschmutzt. Nur eingreifen, wenn der Request vom Editor-Formular kommt.
+				const reqElt  = evt.detail && evt.detail.elt;
+				const reqForm = reqElt && reqElt.closest ? reqElt.closest('form') : null;
+				if (!reqForm || !reqForm.querySelector('#template-editor')) return;
 				window.tinymce.triggerSave();
 				// htmx hat zu diesem Zeitpunkt bereits `evt.detail.parameters`
 				// aus den Form-Elementen befüllt — wir patchen den frisch
 				// gesicherten body_html-Wert direkt nach.
-				const ta = document.getElementById('template-editor');
+				const ta = reqForm.querySelector('#template-editor');
 				if (ta && evt.detail && evt.detail.parameters) {
 					evt.detail.parameters['body_html'] = ta.value;
 				}

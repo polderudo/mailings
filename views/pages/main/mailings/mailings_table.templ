@@ -11,7 +11,7 @@ import (
 	"github.com/templui/templui/components/table"
 )
 
-func mailingsCols(ctx context.Context) []datatable.ColumnDef {
+func mailingsCols(ctx context.Context, archived string) []datatable.ColumnDef {
 	return []datatable.ColumnDef{
 		{Field: "name", Label: Trl(ctx, L.Mailings.MailingName), Sortable: true, Filterable: true},
 		{Field: "template_name", Label: Trl(ctx, L.Mailings.Template)},
@@ -20,11 +20,12 @@ func mailingsCols(ctx context.Context) []datatable.ColumnDef {
 		{Field: "status", Label: Trl(ctx, L.Mailings.MailingStatus), Sortable: true, Filterable: true, Class: "w-32"},
 		{Field: "recipient_count", Label: Trl(ctx, L.Mailings.TotalRecipients), Class: "w-24"},
 		{Field: "postmark_percentage_completed", Label: Trl(ctx, L.Mailings.Progress), Sortable: true, Class: "w-24"},
+		{Field: "archived", Label: Trl(ctx, L.Ui.Archived), Filterable: true, Class: "w-36", FilterComponent: archivedFilter(ctx, archived)},
 	}
 }
 
 templ MailingsTable(rows []db.MailingWithMeta, state datatable.TableState) {
-	@datatable.Table(mailingsCols(ctx), state) {
+	@datatable.Table(mailingsCols(ctx, state.Filters["archived"]), state) {
 		for _, m := range rows {
 			@mailingsRow(m)
 		}
@@ -50,5 +51,20 @@ templ mailingsRow(m db.MailingWithMeta) {
 		@table.Cell() { { m.Status } }
 		@table.Cell() { { strconv.FormatInt(m.RecipientCount, 10) } }
 		@table.Cell() { { strconv.FormatFloat(m.PostmarkPercentageCompleted, 'f', 0, 64) }% }
+		@table.Cell() {
+			if m.Archived {
+				<span class="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">{ Trl(ctx, L.Ui.Archived) }</span>
+			}
+		}
 	}
+}
+
+// archivedFilter rendert das Tri-State-<select> für den Archiv-Filter.
+// Leerer Wert == "active" (Default: nur nicht-archivierte anzeigen).
+templ archivedFilter(ctx context.Context, current string) {
+	<select name="archived" class="dt-filter h-7 w-full rounded-md border border-input bg-transparent px-2 text-sm">
+		<option value="active" selected?={ current == "" || current == "active" }>{ Trl(ctx, L.Users.Active) }</option>
+		<option value="archived" selected?={ current == "archived" }>{ Trl(ctx, L.Ui.Archived) }</option>
+		<option value="all" selected?={ current == "all" }>{ Trl(ctx, L.General.All) }</option>
+	</select>
 }
