@@ -25,6 +25,7 @@ func CreateRoutes(rUser *mw.UserGroup) {
 	rUser.AddNamedRoute(router.Mailings.Create, "/mailings/new/", mailingsApi.MailingCreate, http.MethodPost)
 	rUser.AddNamedRoute(router.Mailings.Detail, "/mailings/:id/", mailingsApi.MailingDetailPage, http.MethodGet)
 	rUser.AddNamedRoute(router.Mailings.Start, "/mailings/:id/start/", mailingsApi.MailingStart, http.MethodPost)
+	rUser.AddNamedRoute(router.Mailings.Resend, "/mailings/:id/resend/", mailingsApi.MailingResend, http.MethodPost)
 	rUser.AddNamedRoute(router.Mailings.Archive, "/mailings/:id/archive/", mailingsApi.MailingArchive, http.MethodPost)
 }
 

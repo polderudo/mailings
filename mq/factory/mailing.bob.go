@@ -57,6 +57,7 @@ type MailingTemplate struct {
 	CreatedAt                   func() time.Time
 	UpdatedAt                   func() null.Val[time.Time]
 	Archived                    func() bool
+	PostmarkStatusError         func() string
 
 	r mailingR
 	f *Factory
@@ -237,6 +238,10 @@ func (o MailingTemplate) BuildSetter() *models.MailingSetter {
 		val := o.Archived()
 		m.Archived = omit.From(val)
 	}
+	if o.PostmarkStatusError != nil {
+		val := o.PostmarkStatusError()
+		m.PostmarkStatusError = omit.From(val)
+	}
 
 	return m
 }
@@ -318,6 +323,9 @@ func (o MailingTemplate) Build() *models.Mailing {
 	}
 	if o.Archived != nil {
 		m.Archived = o.Archived()
+	}
+	if o.PostmarkStatusError != nil {
+		m.PostmarkStatusError = o.PostmarkStatusError()
 	}
 
 	o.setModelRels(m)
@@ -640,6 +648,7 @@ func (m mailingMods) RandomizeAllColumns(f *faker.Faker) MailingMod {
 		MailingMods.RandomCreatedAt(f),
 		MailingMods.RandomUpdatedAt(f),
 		MailingMods.RandomArchived(f),
+		MailingMods.RandomPostmarkStatusError(f),
 	}
 }
 
@@ -1391,6 +1400,37 @@ func (m mailingMods) RandomArchived(f *faker.Faker) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
 		o.Archived = func() bool {
 			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) PostmarkStatusError(val string) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatusError = func() string { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) PostmarkStatusErrorFunc(f func() string) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatusError = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetPostmarkStatusError() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatusError = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailingMods) RandomPostmarkStatusError(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.PostmarkStatusError = func() string {
+			return random_string(f)
 		}
 	})
 }

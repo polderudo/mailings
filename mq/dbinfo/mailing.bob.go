@@ -195,6 +195,15 @@ var Mailings = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		PostmarkStatusError: column{
+			Name:      "postmark_status_error",
+			DBType:    "text",
+			Default:   "''::text",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: mailingIndexes{
 		MailingPkey: index{
@@ -360,11 +369,12 @@ type mailingColumns struct {
 	CreatedAt                   column
 	UpdatedAt                   column
 	Archived                    column
+	PostmarkStatusError         column
 }
 
 func (c mailingColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.PostmarkBulkRequestID, c.PostmarkStatus, c.PostmarkSubmittedAt, c.PostmarkTotalMessages, c.PostmarkPercentageCompleted, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived,
+		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.PostmarkBulkRequestID, c.PostmarkStatus, c.PostmarkSubmittedAt, c.PostmarkTotalMessages, c.PostmarkPercentageCompleted, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived, c.PostmarkStatusError,
 	}
 }
 

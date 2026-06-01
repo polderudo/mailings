@@ -218,6 +218,10 @@ templ MailingInfo(lang string, data MailingDetailData) {
 						<dd>{ postmarkSubmittedDisplay(data.Mailing) }</dd>
 						<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.BulkRequestId) }:</dt>
 						<dd class="break-all font-mono text-xs">{ data.Mailing.PostmarkBulkRequestID }</dd>
+						if data.Mailing.PostmarkStatusError != "" {
+							<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.PostmarkStatusError) }:</dt>
+							<dd class="break-all font-mono text-xs text-destructive">{ data.Mailing.PostmarkStatusError }</dd>
+						}
 					}
 				</dl>
 				if data.Mailing.Status == "draft" {
@@ -231,6 +235,21 @@ templ MailingInfo(lang string, data MailingDetailData) {
 								"hx-target":  "#mailing-info",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": Trl(ctx, L.Mailings.AreYouSureYouWantToStartTheMailing),
+							},
+						})
+					</div>
+				}
+				if data.Mailing.Status == "failed" {
+					<div class="flex justify-end pt-4">
+						@uibutton.Button(uibutton.Props{
+							Color: "primary",
+							Size:  "sm",
+							Label: Trl(ctx, L.Mailings.Resend),
+							Attrs: templ.Attributes{
+								"hx-post":    router.Reverse(router.Mailings.Resend, strconv.Itoa(int(data.Mailing.ID))),
+								"hx-target":  "#mailing-info",
+								"hx-swap":    "outerHTML",
+								"hx-confirm": Trl(ctx, L.Mailings.AreYouSureYouWantToResendTheMailing),
 							},
 						})
 					</div>

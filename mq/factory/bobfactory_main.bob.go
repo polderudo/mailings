@@ -425,6 +425,7 @@ func (f *Factory) fromExistingMailing(ctx context.Context, m *models.Mailing) *M
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
 	o.Archived = func() bool { return m.Archived }
+	o.PostmarkStatusError = func() string { return m.PostmarkStatusError }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))

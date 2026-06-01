@@ -248,6 +248,7 @@ var L = struct {
 		SentCount int
 		FailedCount int
 		PostmarkStatus int
+		PostmarkStatusError int
 		Progress int
 		TotalMessages int
 		SubmittedAt int
@@ -262,6 +263,9 @@ var L = struct {
 		PleasePickASender int
 		NoMailingsYet int
 		AreYouSureYouWantToStartTheMailing int
+		Resend int
+		AreYouSureYouWantToResendTheMailing int
+		OnlyFailedMailingsCanBeResent int
 		BackToMailings int
 	}
 	Navigation struct {
@@ -855,6 +859,7 @@ var L = struct {
 		SentCount int
 		FailedCount int
 		PostmarkStatus int
+		PostmarkStatusError int
 		Progress int
 		TotalMessages int
 		SubmittedAt int
@@ -869,6 +874,9 @@ var L = struct {
 		PleasePickASender int
 		NoMailingsYet int
 		AreYouSureYouWantToStartTheMailing int
+		Resend int
+		AreYouSureYouWantToResendTheMailing int
+		OnlyFailedMailingsCanBeResent int
 		BackToMailings int
 	}{
 		Mailings: LK_mailings,
@@ -889,6 +897,7 @@ var L = struct {
 		SentCount: LK_sent_count,
 		FailedCount: LK_failed_count,
 		PostmarkStatus: LK_postmark_status,
+		PostmarkStatusError: LK_postmark_status_error,
 		Progress: LK_progress,
 		TotalMessages: LK_total_messages,
 		SubmittedAt: LK_submitted_at,
@@ -903,6 +912,9 @@ var L = struct {
 		PleasePickASender: LK_please_pick_a_sender,
 		NoMailingsYet: LK_no_mailings_yet,
 		AreYouSureYouWantToStartTheMailing: LK_are_you_sure_you_want_to_start_the_mailing,
+		Resend: LK_resend,
+		AreYouSureYouWantToResendTheMailing: LK_are_you_sure_you_want_to_resend_the_mailing,
+		OnlyFailedMailingsCanBeResent: LK_only_failed_mailings_can_be_resent,
 		BackToMailings: LK_back_to_mailings,
 	},
 	Navigation: struct {

@@ -237,6 +237,7 @@ const(
 	LK_sent_count
 	LK_failed_count
 	LK_postmark_status
+	LK_postmark_status_error
 	LK_progress
 	LK_total_messages
 	LK_submitted_at
@@ -251,6 +252,9 @@ const(
 	LK_please_pick_a_sender
 	LK_no_mailings_yet
 	LK_are_you_sure_you_want_to_start_the_mailing
+	LK_resend
+	LK_are_you_sure_you_want_to_resend_the_mailing
+	LK_only_failed_mailings_can_be_resent
 	LK_back_to_mailings
 	LK_administration
 	LK_overview

@@ -52,6 +52,9 @@
 - EN: Postmark status
   DE: Postmark-Status
 
+- EN: Postmark status error
+  DE: Postmark-Fehler
+
 - EN: Progress
   DE: Fortschritt
 
@@ -93,6 +96,15 @@
 
 - EN: Are you sure you want to start the mailing?
   DE: Soll der Versand wirklich gestartet werden?
+
+- EN: Resend
+  DE: Erneut senden
+
+- EN: Are you sure you want to resend the mailing?
+  DE: Soll das Mailing wirklich erneut versendet werden?
+
+- EN: Only failed mailings can be resent
+  DE: Nur fehlgeschlagene Mailings können erneut versendet werden
 
 - EN: Back to mailings
   DE: Zurück zu Mailings

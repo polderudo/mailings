@@ -204,6 +204,7 @@ var Mailings = struct {
 	Detail  string
 	Create  string
 	Start   string
+	Resend  string
 	Archive string
 }{
 	List:    "mailings_list",
@@ -211,6 +212,7 @@ var Mailings = struct {
 	Detail:  "mailings_detail",
 	Create:  "mailings_create",
 	Start:   "mailings_start",
+	Resend:  "mailings_resend",
 	Archive: "mailings_archive",
 }
 

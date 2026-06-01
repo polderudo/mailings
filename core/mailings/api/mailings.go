@@ -193,10 +193,56 @@ func (m *api) MailingStart(c *mw.UserContext) error {
 	// Synchroner Bulk-POST: gibt schnell die bulk-request-id zurück, das UI zeigt
 	// danach direkt status=sending + die Postmark-Daten. Den weiteren Fortschritt
 	// zieht der Cron-Poller über GET /email/bulk/{id} nach.
+	return m.sendAndRender(c, mailing.ID)
+}
+
+// MailingResend setzt ein fehlgeschlagenes Mailing zurück auf "draft" und löst
+// den Versand erneut aus. Nur erlaubt, wenn der aktuelle Status "failed" ist.
+// Der erneute Versand nutzt denselben SendBulk-Pfad wie MailingStart; ungültige
+// Empfänger-Adressen werden dort herausgefiltert, sodass ein zuvor an einzelnen
+// Adressen gescheitertes Mailing nun durchläuft.
+func (m *api) MailingResend(c *mw.UserContext) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return fmt.Errorf("invalid mailing id: %w", err)
+	}
+	ctx := context.Background()
+	mailing, err := mq.FindMailing(ctx, db.DBob, int32(id))
+	if err != nil || mailing == nil {
+		return fmt.Errorf("mailing not found")
+	}
+	if mailing.Status != "failed" {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error),
+			i18n.TrLang(c.Lang, i18n.L.Mailings.OnlyFailedMailingsCanBeResent))
+	}
+
+	// Zurück auf draft, damit SendBulk den Versand akzeptiert; Reste des
+	// fehlgeschlagenen Laufs (Postmark-Status, Abschlusszeit) werden bereinigt.
+	setter := &mq.MailingSetter{
+		Status:                omit.From("draft"),
+		PostmarkBulkRequestID: omit.From(""),
+		PostmarkStatus:        omit.From(""),
+		PostmarkStatusError:   omit.From(""),
+		UpdatedByUserID:       omitnull.From(c.UserProfile.ID),
+		UpdatedAt:             omitnull.From(time.Now()),
+	}
+	setter.FinishedAt.Null()
+	if err := mailing.Update(ctx, db.DBob, setter); err != nil {
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
+	}
+
+	return m.sendAndRender(c, mailing.ID)
+}
+
+// sendAndRender löst den Bulk-Versand für das Mailing aus und rendert das
+// aktualisierte Info-Panel mit Erfolgs- bzw. Fehler-Toast. Gemeinsamer Pfad für
+// Erstversand (MailingStart) und erneuten Versand (MailingResend).
+func (m *api) sendAndRender(c *mw.UserContext, mailingID int32) error {
+	ctx := context.Background()
 	client := postmark.NewClient(conf.C.Postmark.ServerToken)
-	if err := client.SendBulk(ctx, mailing.ID); err != nil {
-		slog.Error("postmark send bulk", "err", err, "mailing", mailing.ID)
-		mailing, _ = mq.FindMailing(ctx, db.DBob, int32(id))
+	if err := client.SendBulk(ctx, mailingID); err != nil {
+		slog.Error("postmark send bulk", "err", err, "mailing", mailingID)
+		mailing, _ := mq.FindMailing(ctx, db.DBob, mailingID)
 		data, _ := loadMailingDetail(ctx, mailing)
 		return views.RenderWithToast(c,
 			mailingsview.MailingInfo(c.Lang, data),
@@ -206,7 +252,7 @@ func (m *api) MailingStart(c *mw.UserContext) error {
 		)
 	}
 
-	mailing, _ = mq.FindMailing(ctx, db.DBob, int32(id))
+	mailing, _ := mq.FindMailing(ctx, db.DBob, mailingID)
 	data, err := loadMailingDetail(ctx, mailing)
 	if err != nil {
 		return err

@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	netmail "net/mail"
 	"strings"
 	"time"
 
@@ -98,14 +99,44 @@ type bulkRequest struct {
 	Messages      []bulkMessage `json:"Messages"`
 }
 
+// bulkFieldError ist ein einzelner Validierungsfehler aus der Errors-Property
+// einer 422-Antwort. Postmark gruppiert sie nach Feldname (z. B. "To"/"From");
+// die konkrete Adresse steckt jeweils in Message ("Invalid 'To' address: '…'.").
+type bulkFieldError struct {
+	ErrorCode int    `json:"ErrorCode"`
+	Message   string `json:"Message"`
+}
+
 // bulkResponse ist die Antwort auf POST /email/bulk (Feld "ID").
 type bulkResponse struct {
 	ID          string `json:"ID"`
 	Status      string `json:"Status"`
 	SubmittedAt string `json:"SubmittedAt"`
-	// Fehlerform (Non-2xx):
-	ErrorCode int    `json:"ErrorCode"`
-	Message   string `json:"Message"`
+	// Fehlerform (Non-2xx): bei ErrorCode 11 ("Multiple errors occurred") stehen
+	// die feldbezogenen Details in Errors (Feldname → Liste von Fehlern).
+	ErrorCode int                         `json:"ErrorCode"`
+	Message   string                      `json:"Message"`
+	Errors    map[string][]bulkFieldError `json:"Errors"`
+}
+
+// formatBulkErrors fasst die feldbezogenen Validierungsfehler einer 422-Antwort
+// zu einem loggbaren String zusammen, damit im Log die konkreten Adressen statt
+// nur "Multiple errors occurred. Inspect the Errors property" erscheinen.
+func formatBulkErrors(errs map[string][]bulkFieldError) string {
+	if len(errs) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for field, list := range errs {
+		for i, e := range list {
+			if i >= 5 {
+				fmt.Fprintf(&b, " | %s: (+%d weitere)", field, len(list)-5)
+				break
+			}
+			fmt.Fprintf(&b, " | %s: %s", field, e.Message)
+		}
+	}
+	return b.String()
 }
 
 // BulkStatus ist die Antwort auf GET /email/bulk/{id} (Feld "Id").
@@ -162,9 +193,20 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 		from = fmt.Sprintf("%s <%s>", d.FromName, d.FromEmail)
 	}
 
+	// Empfänger vor dem Versand validieren. Eine einzige ungültige Adresse lässt
+	// Postmark den GESAMTEN Bulk-Request mit 422/ErrorCode 11 ablehnen — alle
+	// Empfänger im Chunk gehen dann verloren (0 statt n-1 versendet). Deshalb
+	// filtern wir kaputte Adressen vorab heraus, markieren sie als failed und
+	// versenden nur die gültigen.
 	messages := make([]bulkMessage, 0, len(recipients))
+	var invalid []*mq.MailListRecipient
 	for _, r := range recipients {
-		msg := bulkMessage{To: r.Email}
+		addr := strings.TrimSpace(r.Email)
+		if _, perr := netmail.ParseAddress(addr); perr != nil {
+			invalid = append(invalid, r)
+			continue
+		}
+		msg := bulkMessage{To: addr}
 		if r.Forename != "" || r.Lastname != "" {
 			msg.TemplateModel = map[string]any{
 				"forename": r.Forename,
@@ -172,6 +214,16 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 			}
 		}
 		messages = append(messages, msg)
+	}
+
+	if len(invalid) > 0 {
+		markInvalidRecipients(ctx, mailingID, invalid)
+		slog.Warn("postmark bulk: ungültige Empfänger-Adressen übersprungen",
+			"mailing", mailingID, "skipped", len(invalid), "valid", len(messages),
+			"examples", sampleEmails(invalid, 10))
+	}
+	if len(messages) == 0 {
+		return c.fail(ctx, m, "keine gültigen Empfänger-Adressen in der Liste")
 	}
 
 	// Postmark erlaubt max. 500 Nachrichten pro /email/bulk-Request. Bei größeren
@@ -252,7 +304,8 @@ func (c *Client) postBulk(ctx context.Context, req bulkRequest) (*bulkResponse, 
 		return nil, fmt.Errorf("postmark bulk: status %d, unparseable response: %s", res.StatusCode, string(raw))
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("postmark bulk: status %d, error %d: %s", res.StatusCode, resp.ErrorCode, resp.Message)
+		return nil, fmt.Errorf("postmark bulk: status %d, error %d: %s%s",
+			res.StatusCode, resp.ErrorCode, resp.Message, formatBulkErrors(resp.Errors))
 	}
 	if resp.ID == "" {
 		return nil, fmt.Errorf("postmark bulk: empty request id in response: %s", string(raw))
@@ -291,13 +344,45 @@ func (c *Client) setHeaders(r *http.Request) {
 	r.Header.Set("X-Postmark-Server-Token", c.ServerToken)
 }
 
-// fail markiert das Mailing als fehlgeschlagen und gibt einen Fehler zurück.
+// markInvalidRecipients schreibt den failed-Status auf die vor dem Versand
+// herausgefilterten Empfänger, damit sie im UI (Recipients-Tabelle) als
+// fehlgeschlagen sichtbar sind und beim nächsten Mailing korrigiert werden können.
+func markInvalidRecipients(ctx context.Context, mailingID int32, recipients []*mq.MailListRecipient) {
+	for _, r := range recipients {
+		if err := r.Update(ctx, db.DBob, &mq.MailListRecipientSetter{
+			LastStatus:    omit.From("failed"),
+			LastError:     omit.From("ungültige E-Mail-Adresse"),
+			LastMailingID: omitnull.From(mailingID),
+		}); err != nil {
+			slog.Error("postmark bulk: mark invalid recipient", "err", err,
+				"mailing", mailingID, "recipient", r.ID)
+		}
+	}
+}
+
+// sampleEmails liefert bis zu n Adressen für eine knappe Log-Ausgabe.
+func sampleEmails(recipients []*mq.MailListRecipient, n int) []string {
+	out := make([]string, 0, n)
+	for _, r := range recipients {
+		if len(out) >= n {
+			break
+		}
+		out = append(out, r.Email)
+	}
+	return out
+}
+
+// fail markiert das Mailing als fehlgeschlagen und gibt einen Fehler zurück. Der
+// reason-Text wird zusätzlich in postmark_status_error abgelegt, damit der
+// Fehlerfall (z. B. die feldbezogenen Postmark-Validierungsfehler) im Frontend
+// nachvollziehbar ist und nicht nur im Log steht.
 func (c *Client) fail(ctx context.Context, m *mq.Mailing, reason string) error {
 	now := time.Now()
 	_ = m.Update(ctx, db.DBob, &mq.MailingSetter{
-		Status:     omit.From("failed"),
-		FinishedAt: omitnull.From(now),
-		UpdatedAt:  omitnull.From(now),
+		Status:              omit.From("failed"),
+		PostmarkStatusError: omit.From(reason),
+		FinishedAt:          omitnull.From(now),
+		UpdatedAt:           omitnull.From(now),
 	})
 	return errors.New(reason)
 }
