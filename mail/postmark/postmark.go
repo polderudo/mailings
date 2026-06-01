@@ -21,6 +21,7 @@ import (
 	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"golang.org/x/net/idna"
 )
 
 const (
@@ -149,6 +150,30 @@ type BulkStatus struct {
 	Subject             string  `json:"Subject"`
 }
 
+// emailToASCII wandelt den Domain-Teil einer E-Mail-Adresse in seine ASCII-/
+// Punycode-Form (IDNA) um, falls er Unicode-Zeichen (z. B. Umlaute) enthält.
+// Der Local-Part bleibt unverändert. Postmark akzeptiert im Domain-Teil nur
+// ASCII; eine Unicode-Domain wie "schön-schule.de" muss als
+// "xn--schn-schule-9hb.de" verschickt werden, sonst lehnt Postmark die Adresse
+// mit 422/ErrorCode 11 ab und der gesamte Bulk-Chunk schlägt fehl.
+//
+// Existiert kein "@", wird die Adresse unverändert zurückgegeben (die
+// Adress-Validierung an anderer Stelle fängt das ab). Lässt sich der Domain-Teil
+// nicht in eine gültige IDNA-/ASCII-Form konvertieren, wird ein Fehler
+// zurückgegeben, damit der Aufrufer die Adresse als ungültig behandeln kann.
+func emailToASCII(addr string) (string, error) {
+	at := strings.LastIndex(addr, "@")
+	if at < 0 {
+		return addr, nil
+	}
+	local, domain := addr[:at], addr[at+1:]
+	ascii, err := idna.Lookup.ToASCII(domain)
+	if err != nil {
+		return "", err
+	}
+	return local + "@" + ascii, nil
+}
+
 // --- Versand ----------------------------------------------------------------
 
 // SendBulk bereitet das Mailing auf (HTML-Wrapper) und schickt es über die
@@ -188,9 +213,16 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 	// versendete Mail einen eindeutigen Abmelde-Link enthält (Broadcast-Stream).
 	htmlBody = withUnsubscribeFooter(htmlBody)
 
-	from := d.FromEmail
+	// Domain-Teil der Absender-Adresse in Punycode wandeln, falls Unicode (Umlaut)
+	// enthalten ist — Postmark akzeptiert im Domain-Teil nur ASCII. Lässt sich die
+	// Absender-Domain nicht konvertieren, kann gar nichts versendet werden → fail.
+	fromEmail, err := emailToASCII(d.FromEmail)
+	if err != nil {
+		return c.fail(ctx, m, "ungültige Absender-Domain: "+err.Error())
+	}
+	from := fromEmail
 	if strings.TrimSpace(d.FromName) != "" {
-		from = fmt.Sprintf("%s <%s>", d.FromName, d.FromEmail)
+		from = fmt.Sprintf("%s <%s>", d.FromName, fromEmail)
 	}
 
 	// Empfänger vor dem Versand validieren. Eine einzige ungültige Adresse lässt
@@ -206,6 +238,16 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 			invalid = append(invalid, r)
 			continue
 		}
+		// Domain-Teil in Punycode wandeln, falls Unicode (Umlaut) enthalten ist —
+		// netmail.ParseAddress akzeptiert Unicode-Domains, Postmark jedoch nicht.
+		// Eine nicht in gültiges IDNA konvertierbare Domain ist für Postmark
+		// unbrauchbar und wird daher wie eine ungültige Adresse aussortiert.
+		ascii, aerr := emailToASCII(addr)
+		if aerr != nil {
+			invalid = append(invalid, r)
+			continue
+		}
+		addr = ascii
 		msg := bulkMessage{To: addr}
 		if r.Forename != "" || r.Lastname != "" {
 			msg.TemplateModel = map[string]any{
