@@ -9,10 +9,15 @@ import (
 	"app/mw"
 	"app/views"
 	blacklistview "app/views/pages/main/blacklist"
+	"encoding/csv"
 	"fmt"
+	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
 
 // loadBlacklist liest Filter/Pagination aus dem Request, fragt die Blacklist ab
@@ -72,6 +77,51 @@ func (m *api) BlacklistSync(c *mw.UserContext) error {
 		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
 		msg,
 	)
+}
+
+// BlacklistExport liefert die komplette Blacklist als CSV-Download
+// (Content-Disposition: attachment). Trennzeichen Semikolon + UTF-8-BOM, damit
+// die Datei in (deutschem) Excel per Doppelklick korrekt in Spalten landet.
+func (m *api) BlacklistExport(c *mw.UserContext) error {
+	ctx := c.Request().Context()
+	rows, err := mq.MailBlacklists.Query(
+		sm.OrderBy(mq.MailBlacklists.Columns.CreatedAt).Desc(),
+	).All(ctx, db.DBob)
+	if err != nil {
+		return err
+	}
+
+	filename := "blacklist-" + time.Now().Format("2006-01-02") + ".csv"
+	res := c.Response()
+	res.Header().Set(echo.HeaderContentType, "text/csv; charset=utf-8")
+	res.Header().Set(echo.HeaderContentDisposition, `attachment; filename="`+filename+`"`)
+	res.WriteHeader(http.StatusOK)
+
+	// UTF-8-BOM voranstellen, damit Excel die Kodierung erkennt (Umlaute).
+	_, _ = res.Write([]byte{0xEF, 0xBB, 0xBF})
+
+	w := csv.NewWriter(res)
+	w.Comma = ';'
+
+	lang := c.Lang
+	_ = w.Write([]string{
+		i18n.TrLang(lang, i18n.L.Blacklist.EmailAddress),
+		i18n.TrLang(lang, i18n.L.Blacklist.Reason),
+		i18n.TrLang(lang, i18n.L.Blacklist.Origin),
+		i18n.TrLang(lang, i18n.L.Blacklist.Source),
+		i18n.TrLang(lang, i18n.L.Blacklist.BlockedAt),
+	})
+	for _, b := range rows {
+		_ = w.Write([]string{
+			b.Email,
+			b.Reason,
+			b.Origin,
+			b.Source,
+			b.CreatedAt.Format("2006-01-02 15:04"),
+		})
+	}
+	w.Flush()
+	return w.Error()
 }
 
 // BlacklistDelete nimmt eine einzelne Adresse wieder aus der Blacklist

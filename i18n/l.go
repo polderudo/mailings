@@ -78,6 +78,7 @@ var L = struct {
 		RemoveFromBlacklist int
 		RemoveThisAddressFromTheBlacklist int
 		AddressRemovedFromBlacklist int
+		ExcelExport int
 	}
 	Domains struct {
 		Domains int
@@ -544,6 +545,7 @@ var L = struct {
 		RemoveFromBlacklist int
 		RemoveThisAddressFromTheBlacklist int
 		AddressRemovedFromBlacklist int
+		ExcelExport int
 	}{
 		Blacklist: LK_blacklist,
 		BlockedAddresses: LK_blocked_addresses,
@@ -559,6 +561,7 @@ var L = struct {
 		RemoveFromBlacklist: LK_remove_from_blacklist,
 		RemoveThisAddressFromTheBlacklist: LK_remove_this_address_from_the_blacklist,
 		AddressRemovedFromBlacklist: LK_address_removed_from_blacklist,
+		ExcelExport: LK_excel_export,
 	},
 	Domains: struct {
 		Domains int

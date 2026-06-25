@@ -118,6 +118,7 @@ var (
 		LK_error:  {LangKey: "LK_error", LangData: LangData{EN: "Error", DE: "Fehler"}},
 		LK_error_doing_checkin:  {LangKey: "LK_error_doing_checkin", LangData: LangData{EN: "Error doing checkin", DE: "Fehler beim Einlagern"}},
 		LK_error_finishing_checkout:  {LangKey: "LK_error_finishing_checkout", LangData: LangData{EN: "Error finishing Checkout", DE: "Fehler beim Beenden der Auslagerung"}},
+		LK_excel_export:  {LangKey: "LK_excel_export", LangData: LangData{EN: "Excel export", DE: "Excel-Export"}},
 		LK_excel_header_columns_email_vorname_nachname:  {LangKey: "LK_excel_header_columns_email_vorname_nachname", LangData: LangData{EN: "Excel header columns: Email, Vorname, Nachname", DE: "Excel-Kopfzeile mit den Spalten: Email, Vorname, Nachname"}},
 		LK_expand_a_question_to_read_the_answer:  {LangKey: "LK_expand_a_question_to_read_the_answer", LangData: LangData{EN: "Expand a question to read the answer.", DE: "Klicke auf eine Frage, um die Antwort anzuzeigen."}},
 		LK_external_data:  {LangKey: "LK_external_data", LangData: LangData{EN: "External Data", DE: "Externe Daten"}},

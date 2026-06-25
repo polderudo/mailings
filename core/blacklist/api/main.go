@@ -22,6 +22,8 @@ func CreateRoutes(rUser *mw.UserGroup) {
 	rUser.AddNamedRoute(router.Blacklist.List, "/blacklist/", blacklistApi.BlacklistPage, http.MethodGet, http.MethodPost)
 	// Manuelles Anstoßen des Postmark-Suppression-Imports.
 	rUser.AddNamedRoute(router.Blacklist.Sync, "/blacklist/sync/", blacklistApi.BlacklistSync, http.MethodPost)
+	// CSV-Export der kompletten Liste (Download).
+	rUser.AddNamedRoute(router.Blacklist.Export, "/blacklist/export/", blacklistApi.BlacklistExport, http.MethodGet)
 	// Einzelne Adresse wieder aus der Blacklist nehmen (reaktiviert in Postmark).
 	rUser.AddNamedRoute(router.Blacklist.Delete, "/blacklist/:id/", blacklistApi.BlacklistDelete, http.MethodDelete)
 }

@@ -75,6 +75,7 @@ const(
 	LK_remove_from_blacklist
 	LK_remove_this_address_from_the_blacklist
 	LK_address_removed_from_blacklist
+	LK_excel_export
 	LK_domains
 	LK_all_domains
 	LK_sender_domain

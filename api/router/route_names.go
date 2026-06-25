@@ -223,10 +223,12 @@ var Blacklist = struct {
 	List   string // GET + POST: Seite + datatable Filter/Sort/Page
 	Sync   string // POST: Postmark-Suppressions jetzt importieren
 	Delete string // DELETE: einzelne Adresse entfernen (reaktiviert in Postmark)
+	Export string // GET: komplette Liste als CSV-Download
 }{
 	List:   "blacklist_list",
 	Sync:   "blacklist_sync",
 	Delete: "blacklist_delete",
+	Export: "blacklist_export",
 }
 
 func init() { mustOK("Blacklist", EnsureAllFieldsSet(Blacklist)) }
