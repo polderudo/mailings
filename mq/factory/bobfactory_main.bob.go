@@ -18,6 +18,7 @@ type Factory struct {
 	baseClientMods            ClientModSlice
 	baseGooseVersionMods      GooseVersionModSlice
 	baseMailMods              MailModSlice
+	baseMailBlacklistMods     MailBlacklistModSlice
 	baseMailDomainMods        MailDomainModSlice
 	baseMailListMods          MailListModSlice
 	baseMailListRecipientMods MailListRecipientModSlice
@@ -160,6 +161,41 @@ func (f *Factory) fromExistingMail(ctx context.Context, m *models.Mail) *MailTem
 	o.ExternalStatus = func() null.Val[string] { return m.ExternalStatus }
 	o.ExternalStatusID = func() null.Val[string] { return m.ExternalStatusID }
 	o.InternalStatus = func() int64 { return m.InternalStatus }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
+
+	return o
+}
+
+func (f *Factory) NewMailBlacklist(mods ...MailBlacklistMod) *MailBlacklistTemplate {
+	return f.NewMailBlacklistWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewMailBlacklistWithContext(ctx context.Context, mods ...MailBlacklistMod) *MailBlacklistTemplate {
+	o := &MailBlacklistTemplate{f: f}
+
+	if f != nil {
+		f.baseMailBlacklistMods.Apply(ctx, o)
+	}
+
+	MailBlacklistModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingMailBlacklist(ctx context.Context, m *models.MailBlacklist) *MailBlacklistTemplate {
+	return f.fromExistingMailBlacklist(ctx, m)
+}
+
+func (f *Factory) fromExistingMailBlacklist(ctx context.Context, m *models.MailBlacklist) *MailBlacklistTemplate {
+	o := &MailBlacklistTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.Email = func() string { return m.Email }
+	o.Reason = func() string { return m.Reason }
+	o.Origin = func() string { return m.Origin }
+	o.Stream = func() string { return m.Stream }
+	o.Source = func() string { return m.Source }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
 
@@ -426,6 +462,7 @@ func (f *Factory) fromExistingMailing(ctx context.Context, m *models.Mailing) *M
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
 	o.Archived = func() bool { return m.Archived }
 	o.PostmarkStatusError = func() string { return m.PostmarkStatusError }
+	o.SkippedCount = func() int32 { return m.SkippedCount }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
@@ -642,6 +679,14 @@ func (f *Factory) ClearBaseMailMods() {
 
 func (f *Factory) AddBaseMailMod(mods ...MailMod) {
 	f.baseMailMods = append(f.baseMailMods, mods...)
+}
+
+func (f *Factory) ClearBaseMailBlacklistMods() {
+	f.baseMailBlacklistMods = nil
+}
+
+func (f *Factory) AddBaseMailBlacklistMod(mods ...MailBlacklistMod) {
+	f.baseMailBlacklistMods = append(f.baseMailBlacklistMods, mods...)
 }
 
 func (f *Factory) ClearBaseMailDomainMods() {

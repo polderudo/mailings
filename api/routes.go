@@ -6,6 +6,7 @@ import (
 	"app/assets"
 	"app/conf"
 	authApi "app/core/auth/api"
+	blacklistApi "app/core/blacklist/api"
 	listsApi "app/core/lists/api"
 	mailingsApi "app/core/mailings/api"
 	templatesApi "app/core/templates/api"
@@ -61,6 +62,7 @@ func CreateCoreRoutes(e *echo.Echo, config echojwt.Config) {
 	templatesApi.CreateRoutes(rUser)
 	listsApi.CreateRoutes(rUser)
 	mailingsApi.CreateRoutes(rUser)
+	blacklistApi.CreateRoutes(rUser)
 
 	return
 }

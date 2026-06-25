@@ -40,6 +40,12 @@ templ MailingsSidebar() {
 							<span>{ Trl(ctx, L.Lists.AllEmailLists) }</span>
 						}
 					}
+					@tuisidebar.MenuItem() {
+						@tuisidebar.MenuButton(tuisidebar.MenuButtonProps{Href: router.Reverse(router.Blacklist.List), Attributes: templ.Attributes{"data-page-title": Trl(ctx, L.Blacklist.Blacklist)}}) {
+							@tuiicon.ShieldBan(tuiicon.Props{Class: "size-4"})
+							<span>{ Trl(ctx, L.Blacklist.Blacklist) }</span>
+						}
+					}
 				}
 				@tuisidebar.Group() {
 					@tuisidebar.GroupLabel() { { Trl(ctx, L.Users.Settings) } }

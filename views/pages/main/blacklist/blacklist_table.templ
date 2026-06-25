@@ -1,0 +1,81 @@
+package blacklistview
+
+import (
+	"app/api/router"
+	. "app/i18n"
+	"app/mq"
+	"context"
+	"strconv"
+
+	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	tuibutton "github.com/templui/templui/components/button"
+	tuiicon "github.com/templui/templui/components/icon"
+	"github.com/templui/templui/components/table"
+)
+
+// blacklistCreatedDisplay formattiert den Sperr-Zeitstempel.
+func blacklistCreatedDisplay(b *mq.MailBlacklist) string {
+	return b.CreatedAt.Format("2006-01-02 15:04")
+}
+
+func blacklistCols(ctx context.Context) []datatable.ColumnDef {
+	return []datatable.ColumnDef{
+		{Field: "email", Label: Trl(ctx, L.Blacklist.EmailAddress), Sortable: true, Filterable: true},
+		{Field: "reason", Label: Trl(ctx, L.Blacklist.Reason), Sortable: true, Filterable: true, Class: "w-44"},
+		{Field: "origin", Label: Trl(ctx, L.Blacklist.Origin), Sortable: true, Class: "w-36"},
+		{Field: "source", Label: Trl(ctx, L.Blacklist.Source), Sortable: true, Class: "w-28"},
+		{Field: "created_at", Label: Trl(ctx, L.Blacklist.BlockedAt), Sortable: true, Class: "w-48"},
+		{Field: "_actions", Label: "", Class: "w-10"},
+	}
+}
+
+templ BlacklistTable(rows []*mq.MailBlacklist, state datatable.TableState) {
+	@datatable.Table(blacklistCols(ctx), state) {
+		for _, b := range rows {
+			@blacklistRow(b)
+		}
+	}
+}
+
+templ blacklistRow(b *mq.MailBlacklist) {
+	@table.Row(table.RowProps{
+		Attributes: templ.Attributes{
+			"data-row-id": strconv.Itoa(int(b.ID)),
+		},
+	}) {
+		@table.Cell(table.CellProps{Class: "font-medium"}) {
+			{ b.Email }
+		}
+		@table.Cell() {
+			if b.Reason != "" {
+				<span class="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">{ b.Reason }</span>
+			}
+		}
+		@table.Cell() {
+			{ b.Origin }
+		}
+		@table.Cell() {
+			{ b.Source }
+		}
+		@table.Cell() {
+			{ blacklistCreatedDisplay(b) }
+		}
+		@table.Cell(table.CellProps{Class: "text-right"}) {
+			@tuibutton.Button(tuibutton.Props{
+				Size:    tuibutton.SizeIcon,
+				Variant: tuibutton.VariantGhost,
+				Class:   "size-7 text-muted-foreground hover:text-destructive",
+				Attributes: templ.Attributes{
+					"type":       "button",
+					"aria-label": Trl(ctx, L.Blacklist.RemoveFromBlacklist),
+					"title":      Trl(ctx, L.Blacklist.RemoveFromBlacklist),
+					"hx-delete":  router.Reverse(router.Blacklist.Delete, strconv.Itoa(int(b.ID))),
+					"hx-target":  "#layout-content-body",
+					"hx-confirm": Trl(ctx, L.Blacklist.RemoveThisAddressFromTheBlacklist),
+				},
+			}) {
+				@tuiicon.Trash2(tuiicon.Props{Class: "size-4"})
+			}
+		}
+	}
+}

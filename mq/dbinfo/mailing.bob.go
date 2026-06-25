@@ -204,6 +204,15 @@ var Mailings = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		SkippedCount: column{
+			Name:      "skipped_count",
+			DBType:    "integer",
+			Default:   "0",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: mailingIndexes{
 		MailingPkey: index{
@@ -370,11 +379,12 @@ type mailingColumns struct {
 	UpdatedAt                   column
 	Archived                    column
 	PostmarkStatusError         column
+	SkippedCount                column
 }
 
 func (c mailingColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.PostmarkBulkRequestID, c.PostmarkStatus, c.PostmarkSubmittedAt, c.PostmarkTotalMessages, c.PostmarkPercentageCompleted, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived, c.PostmarkStatusError,
+		c.ID, c.Name, c.TemplateID, c.ListID, c.DomainID, c.Status, c.SubjectSnapshot, c.BodySnapshot, c.PostmarkBulkRequestID, c.PostmarkStatus, c.PostmarkSubmittedAt, c.PostmarkTotalMessages, c.PostmarkPercentageCompleted, c.StartedAt, c.FinishedAt, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived, c.PostmarkStatusError, c.SkippedCount,
 	}
 }
 

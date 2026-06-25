@@ -214,6 +214,8 @@ templ MailingInfo(lang string, data MailingDetailData) {
 						<dd>{ strconv.FormatFloat(data.Mailing.PostmarkPercentageCompleted, 'f', 0, 64) }%</dd>
 						<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.TotalMessages) }:</dt>
 						<dd>{ strconv.Itoa(int(data.Mailing.PostmarkTotalMessages)) }</dd>
+						<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.NotSent) }:</dt>
+						<dd>{ strconv.Itoa(int(data.Mailing.SkippedCount)) }</dd>
 						<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.SubmittedAt) }:</dt>
 						<dd>{ postmarkSubmittedDisplay(data.Mailing) }</dd>
 						<dt class="text-muted-foreground">{ Trl(ctx, L.Mailings.BulkRequestId) }:</dt>

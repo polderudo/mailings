@@ -225,6 +225,15 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 		from = fmt.Sprintf("%s <%s>", d.FromName, fromEmail)
 	}
 
+	// Globale Blacklist (gespiegelte Postmark-Suppressions + manuelle Sperren)
+	// laden, um geblockte Adressen vor dem Versand auszufiltern. Postmark würde
+	// sie ohnehin nicht zustellen; wir sparen so Payload und markieren die
+	// Empfänger sichtbar als "suppressed".
+	blacklist, blErr := LoadBlacklistSet(ctx)
+	if blErr != nil {
+		return c.fail(ctx, m, "load blacklist: "+blErr.Error())
+	}
+
 	// Empfänger vor dem Versand validieren. Eine einzige ungültige Adresse lässt
 	// Postmark den GESAMTEN Bulk-Request mit 422/ErrorCode 11 ablehnen — alle
 	// Empfänger im Chunk gehen dann verloren (0 statt n-1 versendet). Deshalb
@@ -232,8 +241,13 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 	// versenden nur die gültigen.
 	messages := make([]bulkMessage, 0, len(recipients))
 	var invalid []*mq.MailListRecipient
+	var suppressed []*mq.MailListRecipient
 	for _, r := range recipients {
 		addr := strings.TrimSpace(r.Email)
+		if _, blocked := blacklist[strings.ToLower(addr)]; blocked {
+			suppressed = append(suppressed, r)
+			continue
+		}
 		if _, perr := netmail.ParseAddress(addr); perr != nil {
 			invalid = append(invalid, r)
 			continue
@@ -258,6 +272,12 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 		messages = append(messages, msg)
 	}
 
+	if len(suppressed) > 0 {
+		markSuppressedRecipients(ctx, mailingID, suppressed)
+		slog.Warn("postmark bulk: geblockte (blacklisted) Empfänger übersprungen",
+			"mailing", mailingID, "skipped", len(suppressed), "valid", len(messages),
+			"examples", sampleEmails(suppressed, 10))
+	}
 	if len(invalid) > 0 {
 		markInvalidRecipients(ctx, mailingID, invalid)
 		slog.Warn("postmark bulk: ungültige Empfänger-Adressen übersprungen",
@@ -265,7 +285,7 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 			"examples", sampleEmails(invalid, 10))
 	}
 	if len(messages) == 0 {
-		return c.fail(ctx, m, "keine gültigen Empfänger-Adressen in der Liste")
+		return c.fail(ctx, m, "keine versendbaren Empfänger-Adressen in der Liste (alle ungültig oder geblockt)")
 	}
 
 	// Postmark erlaubt max. 500 Nachrichten pro /email/bulk-Request. Bei größeren
@@ -308,8 +328,11 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 		Status:                omit.From("sending"),
 		PostmarkBulkRequestID: omit.From(strings.Join(requestIDs, ",")),
 		PostmarkStatus:        omit.From(firstStatus),
-		StartedAt:             omitnull.From(now),
-		UpdatedAt:             omitnull.From(now),
+		// Nicht gesendete Adressen: vor dem Versand herausgefilterte Empfänger
+		// (ungültige Adresse oder auf der Blacklist).
+		SkippedCount: omit.From(int32(len(invalid) + len(suppressed))),
+		StartedAt:    omitnull.From(now),
+		UpdatedAt:    omitnull.From(now),
 	}
 	if t, perr := time.Parse(time.RFC3339, firstSubmittedAt); perr == nil {
 		setter.PostmarkSubmittedAt = omitnull.From(t)
@@ -380,6 +403,123 @@ func (c *Client) GetBulkStatus(ctx context.Context, bulkRequestID string) (*Bulk
 	return &st, nil
 }
 
+// --- Suppressions (Blacklist) -----------------------------------------------
+
+// Suppression ist ein einzelner Eintrag aus dem Postmark Suppressions-Dump
+// (GET /message-streams/{stream}/suppressions/dump). Eine "suppressed" Adresse
+// wird von Postmark nicht mehr beliefert — wir spiegeln diese Liste lokal in
+// mail_blacklist, um sie list-übergreifend vor dem Versand auszufiltern.
+type Suppression struct {
+	EmailAddress      string `json:"EmailAddress"`
+	SuppressionReason string `json:"SuppressionReason"` // HardBounce | SpamComplaint | ManualSuppression
+	Origin            string `json:"Origin"`            // Recipient | Customer | Admin
+	CreatedAt         string `json:"CreatedAt"`
+}
+
+// suppressionsDumpResponse ist die Antwort auf den Dump-Endpoint.
+type suppressionsDumpResponse struct {
+	Suppressions []Suppression `json:"Suppressions"`
+}
+
+// DumpSuppressions liest alle aktuell gesperrten Adressen eines Message-Streams.
+// Postmark liefert die komplette Liste ohne Pagination zurück. Der streamID ist
+// die Stream-ID der jeweiligen Absender-Domain (mail_domain.postmark_stream_id,
+// z. B. "broadcast").
+func (c *Client) DumpSuppressions(ctx context.Context, streamID string) ([]Suppression, error) {
+	streamID = strings.TrimSpace(streamID)
+	if streamID == "" {
+		return nil, errors.New("postmark suppressions: empty stream id")
+	}
+	url := fmt.Sprintf("%s/message-streams/%s/suppressions/dump", c.BaseURL, streamID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(httpReq)
+
+	res, err := c.HTTP.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("postmark suppressions dump request: %w", err)
+	}
+	defer res.Body.Close()
+
+	raw, _ := io.ReadAll(res.Body)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, fmt.Errorf("postmark suppressions dump: http %d: %s", res.StatusCode, string(raw))
+	}
+	var resp suppressionsDumpResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, fmt.Errorf("postmark suppressions dump: unparseable response: %s", string(raw))
+	}
+	return resp.Suppressions, nil
+}
+
+// SuppressionDeleteResult ist ein einzelnes Ergebnis aus der Delete-Suppressions-
+// Antwort. Status ist "Deleted" (Adresse wird reaktiviert) oder "Failed"
+// (z. B. SpamComplaint — Postmark erlaubt deren Löschung nicht); Message enthält
+// im Fehlerfall den Grund.
+type SuppressionDeleteResult struct {
+	EmailAddress string `json:"EmailAddress"`
+	Status       string `json:"Status"`
+	Message      string `json:"Message"`
+}
+
+type suppressionDeleteRequest struct {
+	Suppressions []suppressionAddress `json:"Suppressions"`
+}
+
+type suppressionAddress struct {
+	EmailAddress string `json:"EmailAddress"`
+}
+
+type suppressionDeleteResponse struct {
+	Suppressions []SuppressionDeleteResult `json:"Suppressions"`
+}
+
+// DeleteSuppressions löscht (reaktiviert) eine oder mehrere Adressen aus der
+// Suppression-Liste eines Message-Streams via
+// POST /message-streams/{stream}/suppressions/delete. SpamComplaint-Suppressions
+// können nicht gelöscht werden — sie kommen im Result mit Status "Failed" zurück.
+func (c *Client) DeleteSuppressions(ctx context.Context, streamID string, emails []string) ([]SuppressionDeleteResult, error) {
+	streamID = strings.TrimSpace(streamID)
+	if streamID == "" {
+		return nil, errors.New("postmark suppressions: empty stream id")
+	}
+	if len(emails) == 0 {
+		return nil, nil
+	}
+	reqBody := suppressionDeleteRequest{Suppressions: make([]suppressionAddress, 0, len(emails))}
+	for _, e := range emails {
+		reqBody.Suppressions = append(reqBody.Suppressions, suppressionAddress{EmailAddress: e})
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("marshal suppressions delete: %w", err)
+	}
+	url := fmt.Sprintf("%s/message-streams/%s/suppressions/delete", c.BaseURL, streamID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(httpReq)
+
+	res, err := c.HTTP.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("postmark suppressions delete request: %w", err)
+	}
+	defer res.Body.Close()
+
+	raw, _ := io.ReadAll(res.Body)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, fmt.Errorf("postmark suppressions delete: http %d: %s", res.StatusCode, string(raw))
+	}
+	var resp suppressionDeleteResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, fmt.Errorf("postmark suppressions delete: unparseable response: %s", string(raw))
+	}
+	return resp.Suppressions, nil
+}
+
 func (c *Client) setHeaders(r *http.Request) {
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Accept", "application/json")
@@ -397,6 +537,23 @@ func markInvalidRecipients(ctx context.Context, mailingID int32, recipients []*m
 			LastMailingID: omitnull.From(mailingID),
 		}); err != nil {
 			slog.Error("postmark bulk: mark invalid recipient", "err", err,
+				"mailing", mailingID, "recipient", r.ID)
+		}
+	}
+}
+
+// markSuppressedRecipients markiert die wegen der Blacklist herausgefilterten
+// Empfänger mit last_status="suppressed", damit im UI (Recipients-Tabelle)
+// sichtbar ist, dass diese Adresse von Postmark gesperrt ist und bewusst nicht
+// angeschrieben wurde.
+func markSuppressedRecipients(ctx context.Context, mailingID int32, recipients []*mq.MailListRecipient) {
+	for _, r := range recipients {
+		if err := r.Update(ctx, db.DBob, &mq.MailListRecipientSetter{
+			LastStatus:    omit.From("suppressed"),
+			LastError:     omit.From("Adresse steht auf der Blacklist (Postmark-Suppression)"),
+			LastMailingID: omitnull.From(mailingID),
+		}); err != nil {
+			slog.Error("postmark bulk: mark suppressed recipient", "err", err,
 				"mailing", mailingID, "recipient", r.ID)
 		}
 	}

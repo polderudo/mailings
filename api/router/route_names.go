@@ -217,3 +217,16 @@ var Mailings = struct {
 }
 
 func init() { mustOK("Mailings", EnsureAllFieldsSet(Mailings)) }
+
+// Blacklist – globale Sperrliste (gespiegelte Postmark-Suppressions + manuell).
+var Blacklist = struct {
+	List   string // GET + POST: Seite + datatable Filter/Sort/Page
+	Sync   string // POST: Postmark-Suppressions jetzt importieren
+	Delete string // DELETE: einzelne Adresse entfernen (reaktiviert in Postmark)
+}{
+	List:   "blacklist_list",
+	Sync:   "blacklist_sync",
+	Delete: "blacklist_delete",
+}
+
+func init() { mustOK("Blacklist", EnsureAllFieldsSet(Blacklist)) }

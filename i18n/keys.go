@@ -61,6 +61,20 @@ const(
 	LK_please_select_a_branch
 	LK_continue
 	LK_back
+	LK_blacklist
+	LK_blocked_addresses
+	LK_email_address
+	LK_reason
+	LK_origin
+	LK_source
+	LK_blocked_at
+	LK_synchronize_now
+	LK_blacklist_synchronized
+	LK_no_blocked_addresses_yet
+	LK_search_address
+	LK_remove_from_blacklist
+	LK_remove_this_address_from_the_blacklist
+	LK_address_removed_from_blacklist
 	LK_domains
 	LK_all_domains
 	LK_sender_domain
@@ -256,6 +270,7 @@ const(
 	LK_are_you_sure_you_want_to_resend_the_mailing
 	LK_only_failed_mailings_can_be_resent
 	LK_back_to_mailings
+	LK_not_sent
 	LK_administration
 	LK_overview
 	LK_dashboard

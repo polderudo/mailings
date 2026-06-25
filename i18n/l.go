@@ -63,6 +63,22 @@ var L = struct {
 		Continue int
 		Back int
 	}
+	Blacklist struct {
+		Blacklist int
+		BlockedAddresses int
+		EmailAddress int
+		Reason int
+		Origin int
+		Source int
+		BlockedAt int
+		SynchronizeNow int
+		BlacklistSynchronized int
+		NoBlockedAddressesYet int
+		SearchAddress int
+		RemoveFromBlacklist int
+		RemoveThisAddressFromTheBlacklist int
+		AddressRemovedFromBlacklist int
+	}
 	Domains struct {
 		Domains int
 		AllDomains int
@@ -267,6 +283,7 @@ var L = struct {
 		AreYouSureYouWantToResendTheMailing int
 		OnlyFailedMailingsCanBeResent int
 		BackToMailings int
+		NotSent int
 	}
 	Navigation struct {
 		Administration int
@@ -511,6 +528,37 @@ var L = struct {
 		PleaseSelectABranch: LK_please_select_a_branch,
 		Continue: LK_continue,
 		Back: LK_back,
+	},
+	Blacklist: struct {
+		Blacklist int
+		BlockedAddresses int
+		EmailAddress int
+		Reason int
+		Origin int
+		Source int
+		BlockedAt int
+		SynchronizeNow int
+		BlacklistSynchronized int
+		NoBlockedAddressesYet int
+		SearchAddress int
+		RemoveFromBlacklist int
+		RemoveThisAddressFromTheBlacklist int
+		AddressRemovedFromBlacklist int
+	}{
+		Blacklist: LK_blacklist,
+		BlockedAddresses: LK_blocked_addresses,
+		EmailAddress: LK_email_address,
+		Reason: LK_reason,
+		Origin: LK_origin,
+		Source: LK_source,
+		BlockedAt: LK_blocked_at,
+		SynchronizeNow: LK_synchronize_now,
+		BlacklistSynchronized: LK_blacklist_synchronized,
+		NoBlockedAddressesYet: LK_no_blocked_addresses_yet,
+		SearchAddress: LK_search_address,
+		RemoveFromBlacklist: LK_remove_from_blacklist,
+		RemoveThisAddressFromTheBlacklist: LK_remove_this_address_from_the_blacklist,
+		AddressRemovedFromBlacklist: LK_address_removed_from_blacklist,
 	},
 	Domains: struct {
 		Domains int
@@ -878,6 +926,7 @@ var L = struct {
 		AreYouSureYouWantToResendTheMailing int
 		OnlyFailedMailingsCanBeResent int
 		BackToMailings int
+		NotSent int
 	}{
 		Mailings: LK_mailings,
 		AllMailings: LK_all_mailings,
@@ -916,6 +965,7 @@ var L = struct {
 		AreYouSureYouWantToResendTheMailing: LK_are_you_sure_you_want_to_resend_the_mailing,
 		OnlyFailedMailingsCanBeResent: LK_only_failed_mailings_can_be_resent,
 		BackToMailings: LK_back_to_mailings,
+		NotSent: LK_not_sent,
 	},
 	Navigation: struct {
 		Administration int

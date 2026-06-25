@@ -40,9 +40,29 @@ func InitCron() error {
 		return fmt.Errorf("error creating pollSendingMailings cron job: %w", err)
 	}
 
+	// Postmark-Suppression-Liste (Bounces/Spam/Unsubscribes) alle 15 min in die
+	// globale mail_blacklist spiegeln. Läuft direkt beim Start einmal, damit die
+	// Blacklist nach einem Deploy zeitnah aktuell ist.
+	_, err = s.NewJob(
+		gocron.DurationJob(60*time.Minute),
+		gocron.NewTask(syncBlacklist),
+		gocron.WithIntervalFromCompletion(),
+		gocron.WithStartAt(gocron.WithStartImmediately()),
+	)
+	if err != nil {
+		return fmt.Errorf("error creating syncBlacklist cron job: %w", err)
+	}
+
 	s.Start()
-	slog.Info("cron started", "jobs", "pollSendingMailings(30s)")
+	slog.Info("cron started", "jobs", "pollSendingMailings(30s), syncBlacklist(60m)")
 	return nil
+}
+
+// syncBlacklist ist der Cron-Wrapper um postmark.SyncSuppressions.
+func syncBlacklist() {
+	if _, err := postmark.SyncSuppressions(context.Background()); err != nil {
+		slog.Error("cron: blacklist sync", "err", err)
+	}
 }
 
 // pollSendingMailings sucht Mailings mit unserem Status "sending" und zieht für

@@ -21,6 +21,7 @@ func Where[Q psql.Filterable]() struct {
 	Clients            clientWhere[Q]
 	GooseVersions      gooseVersionWhere[Q]
 	Mails              mailWhere[Q]
+	MailBlacklists     mailBlacklistWhere[Q]
 	MailDomains        mailDomainWhere[Q]
 	MailLists          mailListWhere[Q]
 	MailListRecipients mailListRecipientWhere[Q]
@@ -35,6 +36,7 @@ func Where[Q psql.Filterable]() struct {
 		Clients            clientWhere[Q]
 		GooseVersions      gooseVersionWhere[Q]
 		Mails              mailWhere[Q]
+		MailBlacklists     mailBlacklistWhere[Q]
 		MailDomains        mailDomainWhere[Q]
 		MailLists          mailListWhere[Q]
 		MailListRecipients mailListRecipientWhere[Q]
@@ -48,6 +50,7 @@ func Where[Q psql.Filterable]() struct {
 		Clients:            buildClientWhere[Q](Clients.Columns),
 		GooseVersions:      buildGooseVersionWhere[Q](GooseVersions.Columns),
 		Mails:              buildMailWhere[Q](Mails.Columns),
+		MailBlacklists:     buildMailBlacklistWhere[Q](MailBlacklists.Columns),
 		MailDomains:        buildMailDomainWhere[Q](MailDomains.Columns),
 		MailLists:          buildMailListWhere[Q](MailLists.Columns),
 		MailListRecipients: buildMailListRecipientWhere[Q](MailListRecipients.Columns),

@@ -22,6 +22,9 @@ var (
 	// Relationship Contexts for mail
 	mailWithParentsCascadingCtx = newContextual[bool]("mailWithParentsCascading")
 
+	// Relationship Contexts for mail_blacklist
+	mailBlacklistWithParentsCascadingCtx = newContextual[bool]("mailBlacklistWithParentsCascading")
+
 	// Relationship Contexts for mail_domain
 	mailDomainWithParentsCascadingCtx = newContextual[bool]("mailDomainWithParentsCascading")
 	mailDomainRelDomainMailingsCtx    = newContextual[bool]("mail_domain.mailing.mailing.mailing_domain_id_fkey")

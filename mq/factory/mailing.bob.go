@@ -58,6 +58,7 @@ type MailingTemplate struct {
 	UpdatedAt                   func() null.Val[time.Time]
 	Archived                    func() bool
 	PostmarkStatusError         func() string
+	SkippedCount                func() int32
 
 	r mailingR
 	f *Factory
@@ -242,6 +243,10 @@ func (o MailingTemplate) BuildSetter() *models.MailingSetter {
 		val := o.PostmarkStatusError()
 		m.PostmarkStatusError = omit.From(val)
 	}
+	if o.SkippedCount != nil {
+		val := o.SkippedCount()
+		m.SkippedCount = omit.From(val)
+	}
 
 	return m
 }
@@ -326,6 +331,9 @@ func (o MailingTemplate) Build() *models.Mailing {
 	}
 	if o.PostmarkStatusError != nil {
 		m.PostmarkStatusError = o.PostmarkStatusError()
+	}
+	if o.SkippedCount != nil {
+		m.SkippedCount = o.SkippedCount()
 	}
 
 	o.setModelRels(m)
@@ -649,6 +657,7 @@ func (m mailingMods) RandomizeAllColumns(f *faker.Faker) MailingMod {
 		MailingMods.RandomUpdatedAt(f),
 		MailingMods.RandomArchived(f),
 		MailingMods.RandomPostmarkStatusError(f),
+		MailingMods.RandomSkippedCount(f),
 	}
 }
 
@@ -1431,6 +1440,37 @@ func (m mailingMods) RandomPostmarkStatusError(f *faker.Faker) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
 		o.PostmarkStatusError = func() string {
 			return random_string(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) SkippedCount(val int32) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.SkippedCount = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) SkippedCountFunc(f func() int32) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.SkippedCount = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetSkippedCount() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.SkippedCount = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailingMods) RandomSkippedCount(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.SkippedCount = func() int32 {
+			return random_int32(f)
 		}
 	})
 }
