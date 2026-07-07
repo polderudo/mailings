@@ -79,6 +79,10 @@ var L = struct {
 		RemoveThisAddressFromTheBlacklist int
 		AddressRemovedFromBlacklist int
 		ExcelExport int
+		AddToBlacklist int
+		AddressAddedToBlacklist int
+		AddressIsAlreadyBlacklisted int
+		InvalidEmailAddress int
 	}
 	Domains struct {
 		Domains int
@@ -546,6 +550,10 @@ var L = struct {
 		RemoveThisAddressFromTheBlacklist int
 		AddressRemovedFromBlacklist int
 		ExcelExport int
+		AddToBlacklist int
+		AddressAddedToBlacklist int
+		AddressIsAlreadyBlacklisted int
+		InvalidEmailAddress int
 	}{
 		Blacklist: LK_blacklist,
 		BlockedAddresses: LK_blocked_addresses,
@@ -562,6 +570,10 @@ var L = struct {
 		RemoveThisAddressFromTheBlacklist: LK_remove_this_address_from_the_blacklist,
 		AddressRemovedFromBlacklist: LK_address_removed_from_blacklist,
 		ExcelExport: LK_excel_export,
+		AddToBlacklist: LK_add_to_blacklist,
+		AddressAddedToBlacklist: LK_address_added_to_blacklist,
+		AddressIsAlreadyBlacklisted: LK_address_is_already_blacklisted,
+		InvalidEmailAddress: LK_invalid_email_address,
 	},
 	Domains: struct {
 		Domains int

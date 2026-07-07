@@ -10,6 +10,7 @@ import (
 	"app/views"
 	blacklistview "app/views/pages/main/blacklist"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -76,6 +77,32 @@ func (m *api) BlacklistSync(c *mw.UserContext) error {
 		"success",
 		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
 		msg,
+	)
+}
+
+// BlacklistAdd nimmt eine einzelne Adresse manuell in die Blacklist auf
+// (reason='Manual', source='manual') und liefert die aktualisierte Tabelle
+// samt Erfolgs-Toast zurück.
+func (m *api) BlacklistAdd(c *mw.UserContext) error {
+	if _, err := postmark.AddToBlacklist(c.Request().Context(), c.FormValue("email")); err != nil {
+		msg := err.Error()
+		switch {
+		case errors.Is(err, postmark.ErrBlacklistInvalidEmail):
+			msg = i18n.TrLang(c.Lang, i18n.L.Blacklist.InvalidEmailAddress)
+		case errors.Is(err, postmark.ErrBlacklistAlreadyExists):
+			msg = i18n.TrLang(c.Lang, i18n.L.Blacklist.AddressIsAlreadyBlacklisted)
+		}
+		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), msg)
+	}
+	rows, state, err := loadBlacklist(c)
+	if err != nil {
+		return err
+	}
+	return views.RenderWithToast(c,
+		blacklistview.BlacklistPage(c.Lang, rows, state),
+		"success",
+		i18n.TrLang(c.Lang, i18n.L.Ui.Success),
+		i18n.TrLang(c.Lang, i18n.L.Blacklist.AddressAddedToBlacklist),
 	)
 }
 

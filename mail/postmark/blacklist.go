@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	netmail "net/mail"
 	"strings"
 	"time"
 
@@ -17,6 +18,54 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql/im"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
+
+// Sentinel-Fehler für das manuelle Sperren einer Adresse (AddToBlacklist), damit
+// der Aufrufer sie sauber in lokalisierte Toast-Meldungen übersetzen kann.
+var (
+	// ErrBlacklistInvalidEmail: die übergebene Adresse ist keine gültige
+	// E-Mail-Adresse.
+	ErrBlacklistInvalidEmail = errors.New("blacklist: ungültige E-Mail-Adresse")
+	// ErrBlacklistAlreadyExists: die Adresse steht bereits (egal ob postmark oder
+	// manuell) in der globalen Blacklist.
+	ErrBlacklistAlreadyExists = errors.New("blacklist: Adresse bereits gesperrt")
+)
+
+// ManualReason ist der Grund-Wert, unter dem manuell gesperrte Adressen in der
+// Blacklist geführt werden.
+const ManualReason = "Manual"
+
+// AddToBlacklist nimmt eine Adresse manuell in die globale Blacklist auf
+// (source='manual', reason='Manual'). Manuelle Einträge tragen keinen Postmark-
+// Stream und bleiben beim Suppression-Sync unangetastet; SendBulk filtert sie
+// über LoadBlacklistSet trotzdem vor jedem Versand heraus. Ein Postmark-Aufruf
+// ist nicht nötig — die Sperre wirkt rein lokal.
+//
+// Ist die Adresse bereits gesperrt (unique-Index lower(email)), wird
+// ErrBlacklistAlreadyExists zurückgegeben; ist sie keine gültige Adresse,
+// ErrBlacklistInvalidEmail.
+func AddToBlacklist(ctx context.Context, email string) (*mq.MailBlacklist, error) {
+	addr := strings.TrimSpace(email)
+	if _, perr := netmail.ParseAddress(addr); perr != nil {
+		return nil, ErrBlacklistInvalidEmail
+	}
+
+	// ON CONFLICT (lower(email)) DO NOTHING: kollidiert die Adresse mit einem
+	// bereits vorhandenen Eintrag (postmark oder manuell), liefert RETURNING keine
+	// Zeile → sql.ErrNoRows. Das behandeln wir als ErrBlacklistAlreadyExists.
+	row, err := mq.MailBlacklists.Insert(&mq.MailBlacklistSetter{
+		Email:  omit.From(addr),
+		Reason: omit.From(ManualReason),
+		Source: omit.From("manual"),
+	}, im.OnConflict(psql.Raw("lower(email)")).DoNothing()).One(ctx, db.DBob)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrBlacklistAlreadyExists
+		}
+		return nil, fmt.Errorf("insert mail_blacklist: %w", err)
+	}
+	slog.Info("blacklist: address added manually", "email", row.Email)
+	return row, nil
+}
 
 // SyncResult fasst das Ergebnis eines Suppression-Syncs zusammen.
 type SyncResult struct {

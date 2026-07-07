@@ -76,6 +76,10 @@ const(
 	LK_remove_this_address_from_the_blacklist
 	LK_address_removed_from_blacklist
 	LK_excel_export
+	LK_add_to_blacklist
+	LK_address_added_to_blacklist
+	LK_address_is_already_blacklisted
+	LK_invalid_email_address
 	LK_domains
 	LK_all_domains
 	LK_sender_domain

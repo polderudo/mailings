@@ -8,6 +8,8 @@ import (
 
 	uibutton "github.com/nakami-lounge-GmbH/ui-components/button"
 	"github.com/nakami-lounge-GmbH/ui-components/datatable"
+	uiform "github.com/nakami-lounge-GmbH/ui-components/form"
+	uiinput "github.com/nakami-lounge-GmbH/ui-components/input"
 	breadcrumb "github.com/templui/templui/components/breadcrumb"
 	tuibutton "github.com/templui/templui/components/button"
 	tuiicon "github.com/templui/templui/components/icon"
@@ -22,30 +24,69 @@ templ Blacklist(user *mq.UserProfile, lang string, rows []*mq.MailBlacklist, sta
 templ BlacklistPage(lang string, rows []*mq.MailBlacklist, state datatable.TableState) {
 	<div class="space-y-4">
 		@BlacklistBreadcrumbs(lang)
-		<div class="flex justify-end gap-2">
-			@tuibutton.Button(tuibutton.Props{
-				Size:    tuibutton.SizeSm,
-				Variant: tuibutton.VariantOutline,
-				Href:    router.Reverse(router.Blacklist.Export),
-				Target:  "_blank",
-			}) {
-				@tuiicon.Download(tuiicon.Props{Class: "size-4 mr-1"})
-				{ Trl(ctx, L.Blacklist.ExcelExport) }
-			}
-			@uibutton.Button(uibutton.Props{
-				Color: "primary",
-				Size:  "sm",
-				Label: Trl(ctx, L.Blacklist.SynchronizeNow),
-				Attrs: templ.Attributes{
-					"hx-post":   router.Reverse(router.Blacklist.Sync),
-					"hx-target": "#layout-content-body",
-				},
-			})
+		<div class="flex flex-wrap items-end justify-between gap-2">
+			@blacklistAddForm(lang)
+			<div class="flex gap-2">
+				@tuibutton.Button(tuibutton.Props{
+					Size:    tuibutton.SizeSm,
+					Variant: tuibutton.VariantOutline,
+					Href:    router.Reverse(router.Blacklist.Export),
+					Target:  "_blank",
+				}) {
+					@tuiicon.Download(tuiicon.Props{Class: "size-4 mr-1"})
+					{ Trl(ctx, L.Blacklist.ExcelExport) }
+				}
+				@uibutton.Button(uibutton.Props{
+					Color: "primary",
+					Size:  "sm",
+					Label: Trl(ctx, L.Blacklist.SynchronizeNow),
+					Attrs: templ.Attributes{
+						"hx-post":   router.Reverse(router.Blacklist.Sync),
+						"hx-target": "#layout-content-body",
+					},
+				})
+			</div>
 		</div>
 		<div>
 			@BlacklistTable(rows, state)
 		</div>
 	</div>
+}
+
+// blacklistAddForm ist das Inline-Formular zum manuellen Sperren einer einzelnen
+// Adresse (reason='Manual'). POST → BlacklistAdd, ersetzt den kompletten
+// Seiteninhalt (#layout-content-body) mit der aktualisierten Tabelle. Da der
+// Content-Body komplett neu gerendert wird, ist das Formular danach wieder leer.
+templ blacklistAddForm(lang string) {
+	{{ addAction := router.Reverse(router.Blacklist.Add) }}
+	@uiform.Form(uiform.FormProps{
+		Class:  "flex items-end gap-2",
+		Action: addAction,
+		Method: "post",
+		Attributes: templ.Attributes{
+			"hx-post":   addAction,
+			"hx-target": "#layout-content-body",
+		},
+	}) {
+		<div>
+			@uiform.Label(uiform.LabelProps{For: "blacklist-add-email"}) {
+				{ Trl(ctx, L.Blacklist.EmailAddress) }
+			}
+			@uiinput.Input(uiinput.Props{
+				ID:          "blacklist-add-email",
+				Name:        "email",
+				Type:        uiinput.TypeEmail,
+				Placeholder: Trl(ctx, L.Blacklist.EmailAddress),
+				Required:    true,
+			})
+		</div>
+		@uibutton.Button(uibutton.Props{
+			Type:  "submit",
+			Color: "primary",
+			Size:  "sm",
+			Label: Trl(ctx, L.Blacklist.AddToBlacklist),
+		})
+	}
 }
 
 templ BlacklistBreadcrumbs(lang string) {
