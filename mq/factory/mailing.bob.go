@@ -59,6 +59,7 @@ type MailingTemplate struct {
 	Archived                    func() bool
 	PostmarkStatusError         func() string
 	SkippedCount                func() int32
+	Format                      func() string
 
 	r mailingR
 	f *Factory
@@ -247,6 +248,10 @@ func (o MailingTemplate) BuildSetter() *models.MailingSetter {
 		val := o.SkippedCount()
 		m.SkippedCount = omit.From(val)
 	}
+	if o.Format != nil {
+		val := o.Format()
+		m.Format = omit.From(val)
+	}
 
 	return m
 }
@@ -334,6 +339,9 @@ func (o MailingTemplate) Build() *models.Mailing {
 	}
 	if o.SkippedCount != nil {
 		m.SkippedCount = o.SkippedCount()
+	}
+	if o.Format != nil {
+		m.Format = o.Format()
 	}
 
 	o.setModelRels(m)
@@ -658,6 +666,7 @@ func (m mailingMods) RandomizeAllColumns(f *faker.Faker) MailingMod {
 		MailingMods.RandomArchived(f),
 		MailingMods.RandomPostmarkStatusError(f),
 		MailingMods.RandomSkippedCount(f),
+		MailingMods.RandomFormat(f),
 	}
 }
 
@@ -1471,6 +1480,37 @@ func (m mailingMods) RandomSkippedCount(f *faker.Faker) MailingMod {
 	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
 		o.SkippedCount = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailingMods) Format(val string) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Format = func() string { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailingMods) FormatFunc(f func() string) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Format = f
+	})
+}
+
+// Clear any values for the column
+func (m mailingMods) UnsetFormat() MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Format = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailingMods) RandomFormat(f *faker.Faker) MailingMod {
+	return MailingModFunc(func(_ context.Context, o *MailingTemplate) {
+		o.Format = func() string {
+			return random_string(f, "16")
 		}
 	})
 }

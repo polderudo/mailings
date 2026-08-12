@@ -96,6 +96,24 @@ var MailTemplates = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		Format: column{
+			Name:      "format",
+			DBType:    "character varying",
+			Default:   "'html'::character varying",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		BodyText: column{
+			Name:      "body_text",
+			DBType:    "text",
+			Default:   "''::text",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: mailTemplateIndexes{
 		MailTemplatePkey: index{
@@ -172,11 +190,13 @@ type mailTemplateColumns struct {
 	CreatedAt       column
 	UpdatedAt       column
 	Archived        column
+	Format          column
+	BodyText        column
 }
 
 func (c mailTemplateColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.Subject, c.BodyHTML, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived,
+		c.ID, c.Name, c.Subject, c.BodyHTML, c.CreatedByUserID, c.UpdatedByUserID, c.CreatedAt, c.UpdatedAt, c.Archived, c.Format, c.BodyText,
 	}
 }
 

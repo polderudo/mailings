@@ -155,8 +155,13 @@ Kern-Feature dieser Anwendung. Workflow:
 
 ### Tabellen (Migration 00002)
 
-- `mail_template`        — benannte HTML-Templates, im TinyMCE-Editor gepflegt
-  - `id`, `name`, `subject`, `body_html`, `created_by`, `created_at`, `updated_at`
+- `mail_template`        — benannte Vorlagen, je nach `format` HTML oder reiner Text
+  - `id`, `name`, `subject`, `format` (`html` | `text`), `body_html`, `body_text`,
+    `created_by`, `created_at`, `updated_at`
+  - `body_html` (TinyMCE) und `body_text` (Textarea) stehen in getrennten Spalten:
+    ein Formatwechsel darf den jeweils anderen Inhalt nicht verwerfen. Beide
+    werden bei jedem Speichern geschrieben, `format` entscheidet nur, welcher
+    versendet wird.
 - `mail_list`            — benannte Empfänger-Gruppen
   - `id`, `name`, `description`, `created_by`, `created_at`, `updated_at`
 - `mail_domain`          — feste Liste der versendbaren Absender-Domains
@@ -167,9 +172,11 @@ Kern-Feature dieser Anwendung. Workflow:
   Anzahl steht **nicht** auf `mailing` (die Liste darf nach Anlegen weiter
   editiert werden); sie wird live über `listsapi.CountListRecipients` gezählt.
   - `id`, `name`, `template_id`, `list_id`, `domain_id`, `status`
-    (`draft`, `queued`, `sending`, `done`, `failed`), `subject_snapshot`,
-    `body_snapshot`, `started_at`, `finished_at`,
+    (`draft`, `queued`, `sending`, `done`, `failed`), `format` (`html` | `text`),
+    `subject_snapshot`, `body_snapshot`, `started_at`, `finished_at`,
     `sent_count`, `failed_count`, `created_by`, `created_at`, `updated_at`
+  - `format` wird beim Anlegen aus der Vorlage übernommen und sagt dem Versand,
+    wie `body_snapshot` zu lesen ist (HTML-Gerüst oder Plain-Text).
 - `mail_list_recipient`  — einzelne Adressen pro Liste, inkl. letztem Versand-Status
   - Stammdaten: `id`, `list_id` (FK → `mail_list`, ON DELETE CASCADE), `email`,
     `forename`, `lastname`, `created_at`
@@ -218,6 +225,35 @@ Cursor-Position eingefügt werden.
   ein Dropdown in der Toolbar; jeder Klick auf einen Eintrag ruft
   `editor.insertContent(s.html)` — das ist Quill-frei und ohne die früheren
   Selection-/DOM-Crashes.
+
+### Reine Text-Mails (`format = text`)
+
+Eine Vorlage ist entweder ein HTML-Newsletter (Default) oder eine reine
+Text-Mail. Die Umschaltung sitzt als Radio-Paar (`name="format"`) im
+Vorlagen-Formular und blendet per Alpine (`x-show`) den passenden Body-Block ein:
+TinyMCE für HTML, eine 35-zeilige Monospace-Textarea (`name="body_text"`) für Text.
+Konstanten und Normalisierung liegen in `mail/format`.
+
+Beim Versand (`postmark.SendBulk`):
+
+- **HTML**: `body_snapshot` wird wie bisher via `templates.RenderNewsletterHTML`
+  in das Outlook-kompatible Gerüst gehüllt und als `HtmlBody` geschickt.
+- **Text**: `body_snapshot` geht unverändert (CRLF → LF) als `TextBody` raus.
+  `HtmlBody` trägt `omitempty` und fehlt damit komplett im JSON — ein leerer
+  `HtmlBody` würde Postmark sonst eine Multipart-Mail mit leerem HTML-Teil
+  bauen lassen. Postmark selbst dokumentiert das Entweder-oder: *"If no HtmlBody
+  specified Plain text email message."*
+- **Tracking**: bei Text-Mails werden `TrackOpens`/`TrackLinks` unabhängig von
+  der Config hart auf `false`/`"None"` gesetzt. Open-Tracking braucht ein
+  Zählpixel (in Text unmöglich), Link-Tracking würde die URLs auf die
+  Postmark-Redirect-Domain umschreiben und den Klartext-Charakter zerstören.
+
+**Opt-out**: der Merge-Token `{{{ pm:unsubscribe }}}` funktioniert laut Postmark
+*"in the HTML and Plain Text copy of your message"*. `withUnsubscribeFooterText`
+hängt daher denselben Disclaimer wie die HTML-Variante als Plain-Text-Footer an,
+mit dem Token in einer eigenen Zeile (im Text wird er zur nackten URL). Beide
+Footer-Funktionen sind idempotent: steht der Token bereits im Body, bleibt
+dieser unverändert.
 
 ### Postmark Broadcasts
 

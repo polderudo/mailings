@@ -309,6 +309,11 @@ const(
 	LK_search_template
 	LK_insert_html_snippet
 	LK_no_snippets_available
+	LK_mail_format
+	LK_html_newsletter
+	LK_plain_text
+	LK_text_body
+	LK_the_text_is_sent_exactly_as_entered
 	LK_hello
 	LK_english
 	LK_german

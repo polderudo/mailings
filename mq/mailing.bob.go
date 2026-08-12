@@ -49,6 +49,7 @@ type Mailing struct {
 	Archived                    bool                `db:"archived" json:"archived"`
 	PostmarkStatusError         string              `db:"postmark_status_error" json:"postmark_status_error"`
 	SkippedCount                int32               `db:"skipped_count" json:"skipped_count"`
+	Format                      string              `db:"format" json:"format"`
 
 	R mailingR `db:"-" json:"R"`
 
@@ -91,7 +92,7 @@ type mailingRLoaded struct {
 
 func buildMailingColumns(tableName string) mailingColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "postmark_bulk_request_id", "postmark_status", "postmark_submitted_at", "postmark_total_messages", "postmark_percentage_completed", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at", "archived", "postmark_status_error", "skipped_count",
+		"id", "name", "template_id", "list_id", "domain_id", "status", "subject_snapshot", "body_snapshot", "postmark_bulk_request_id", "postmark_status", "postmark_submitted_at", "postmark_total_messages", "postmark_percentage_completed", "started_at", "finished_at", "created_by_user_id", "updated_by_user_id", "created_at", "updated_at", "archived", "postmark_status_error", "skipped_count", "format",
 	)
 
 	if tableName != "" {
@@ -123,6 +124,7 @@ func buildMailingColumns(tableName string) mailingColumns {
 		Archived:                    buildMailingColumn(tableName, "archived"),
 		PostmarkStatusError:         buildMailingColumn(tableName, "postmark_status_error"),
 		SkippedCount:                buildMailingColumn(tableName, "skipped_count"),
+		Format:                      buildMailingColumn(tableName, "format"),
 	}
 }
 
@@ -151,6 +153,7 @@ type mailingColumns struct {
 	Archived                    mailingColumn
 	PostmarkStatusError         mailingColumn
 	SkippedCount                mailingColumn
+	Format                      mailingColumn
 }
 
 // Alias returns the current table alias for the columns set.
@@ -218,10 +221,11 @@ type MailingSetter struct {
 	Archived                    omit.Val[bool]          `db:"archived" json:"archived"`
 	PostmarkStatusError         omit.Val[string]        `db:"postmark_status_error" json:"postmark_status_error"`
 	SkippedCount                omit.Val[int32]         `db:"skipped_count" json:"skipped_count"`
+	Format                      omit.Val[string]        `db:"format" json:"format"`
 }
 
 func (s MailingSetter) SetColumns() []string {
-	vals := make([]string, 0, 22)
+	vals := make([]string, 0, 23)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -287,6 +291,9 @@ func (s MailingSetter) SetColumns() []string {
 	}
 	if s.SkippedCount.IsValue() {
 		vals = append(vals, "skipped_count")
+	}
+	if s.Format.IsValue() {
+		vals = append(vals, "format")
 	}
 	return vals
 }
@@ -358,6 +365,9 @@ func (s MailingSetter) Overwrite(t *Mailing) {
 	if s.SkippedCount.IsValue() {
 		t.SkippedCount = s.SkippedCount.MustGet()
 	}
+	if s.Format.IsValue() {
+		t.Format = s.Format.MustGet()
+	}
 }
 
 func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
@@ -366,7 +376,7 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 22)
+		vals := make([]bob.Expression, 23)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -499,6 +509,12 @@ func (s *MailingSetter) Apply(q *dialect.InsertQuery) {
 			vals[21] = psql.Raw("DEFAULT")
 		}
 
+		if s.Format.IsValue() {
+			vals[22] = psql.Arg(s.Format.MustGet())
+		} else {
+			vals[22] = psql.Raw("DEFAULT")
+		}
+
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
 	}))
 }
@@ -508,7 +524,7 @@ func (s MailingSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 22)
+	exprs := make([]bob.Expression, 0, 23)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -661,6 +677,13 @@ func (s MailingSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "skipped_count")...),
 			psql.Arg(s.SkippedCount),
+		}})
+	}
+
+	if s.Format.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "format")...),
+			psql.Arg(s.Format),
 		}})
 	}
 
@@ -1380,6 +1403,7 @@ type mailingWhere[Q psql.Filterable] struct {
 	Archived                    psql.WhereMod[Q, bool]
 	PostmarkStatusError         psql.WhereMod[Q, string]
 	SkippedCount                psql.WhereMod[Q, int32]
+	Format                      psql.WhereMod[Q, string]
 }
 
 func (mailingWhere[Q]) AliasedAs(alias string) mailingWhere[Q] {
@@ -1410,6 +1434,7 @@ func buildMailingWhere[Q psql.Filterable](cols mailingColumns) mailingWhere[Q] {
 		Archived:                    psql.Where[Q, bool](cols.Archived.Expression),
 		PostmarkStatusError:         psql.Where[Q, string](cols.PostmarkStatusError.Expression),
 		SkippedCount:                psql.Where[Q, int32](cols.SkippedCount.Expression),
+		Format:                      psql.Where[Q, string](cols.Format.Expression),
 	}
 }
 

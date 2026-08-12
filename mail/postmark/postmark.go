@@ -3,6 +3,7 @@ package postmark
 import (
 	"app/conf"
 	"app/db"
+	"app/mail/format"
 	"app/mq"
 	"app/templates"
 	"bytes"
@@ -43,6 +44,34 @@ const unsubscribeToken = "{{{ pm:unsubscribe }}}"
 // Styling hier zentral editierbar. Das href nutzt den Postmark-Unsubscribe-
 // Merge-Token, den Postmark auf Broadcast-Streams pro Empfänger auflöst.
 const unsubscribeFooterHTML = `<p style="font-size:12px;color:#888;margin:24px"><strong>legal disclaimer</strong><br><br>Es liegt nicht in unserer Absicht, Ihnen unerwünschte Informationen per E-Mail zukommen zu lassen. Sie erhalten diese E-Mail als unser Kunde oder weil wir Sie als Interessenten für unsere Newsletter zum Thema Schule/Bildung in unserer Datenbank führen. Falls Sie zukünftig keine Information mehr erhalten möchten, können Sie sich vom Newsletter einfach <a href="{{{ pm:unsubscribe }}}">hier abmelden</a> und wir löschen Ihre Daten umgehend und vollständig.</p>`
+
+// unsubscribeFooterText ist die Plain-Text-Fassung des Abmelde-Footers für
+// reine Text-Mailings. Postmark löst den Unsubscribe-Token laut Doku "in the
+// HTML and Plain Text copy of your message" auf; im Text-Body wird er zur
+// nackten URL, deshalb steht er hier in einer eigenen Zeile statt in einem
+// Link-Text. Wortlaut bewusst identisch zur HTML-Variante.
+const unsubscribeFooterText = "\n\n--\nlegal disclaimer\n\n" +
+	"Es liegt nicht in unserer Absicht, Ihnen unerwünschte Informationen per E-Mail " +
+	"zukommen zu lassen. Sie erhalten diese E-Mail als unser Kunde oder weil wir Sie " +
+	"als Interessenten für unsere Newsletter zum Thema Schule/Bildung in unserer " +
+	"Datenbank führen. Falls Sie zukünftig keine Information mehr erhalten möchten, " +
+	"können Sie sich vom Newsletter unter folgendem Link abmelden — wir löschen Ihre " +
+	"Daten umgehend und vollständig:\n{{{ pm:unsubscribe }}}\n"
+
+// withUnsubscribeFooterText hängt den Abmelde-Footer an einen Plain-Text-Body
+// an. Idempotent wie die HTML-Variante: steht der Unsubscribe-Token bereits im
+// Text (z. B. manuell in der Vorlage platziert), bleibt der Body unverändert.
+//
+// Ohne Token würde Postmark bei Broadcast-Streams zwar selbst einen Footer
+// anhängen ("Broadcast messages that aren't sent with a placeholder will
+// automatically have the unsubscribe link appended"), aber mit eigenem Wortlaut
+// — wir setzen ihn daher selbst.
+func withUnsubscribeFooterText(textBody string) string {
+	if strings.Contains(textBody, unsubscribeToken) {
+		return textBody
+	}
+	return strings.TrimRight(textBody, "\r\n \t") + unsubscribeFooterText
+}
 
 // withUnsubscribeFooter hängt den Abmelde-Footer an den HTML-Body an. Idempotent:
 // enthält der Body den Unsubscribe-Token bereits (z. B. manuell im Template
@@ -92,7 +121,11 @@ type bulkRequest struct {
 	From          string        `json:"From"`
 	ReplyTo       string        `json:"ReplyTo,omitempty"`
 	Subject       string        `json:"Subject"`
-	HtmlBody      string        `json:"HtmlBody"`
+	// HtmlBody/TextBody sind bei Postmark ein Entweder-oder ("If no HtmlBody
+	// specified Plain text email message"). Beide tragen omitempty, damit bei
+	// einer reinen Text-Mail KEIN leerer HtmlBody im JSON landet — sonst baut
+	// Postmark eine Multipart-Mail mit leerem HTML-Teil.
+	HtmlBody      string        `json:"HtmlBody,omitempty"`
 	TextBody      string        `json:"TextBody,omitempty"`
 	MessageStream string        `json:"MessageStream,omitempty"`
 	TrackOpens    bool          `json:"TrackOpens"`
@@ -205,13 +238,26 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 		return c.fail(ctx, m, "list has no recipients")
 	}
 
-	htmlBody, err := templates.RenderNewsletterHTML(m.SubjectSnapshot, m.BodySnapshot, m.SubjectSnapshot)
-	if err != nil {
-		return c.fail(ctx, m, "render html: "+err.Error())
+	// Body je nach Format aufbereiten. In beiden Fällen wird der Abmelde-Footer
+	// mit dem Postmark-Unsubscribe-Token zentral angehängt, damit jede versendete
+	// Mail einen eindeutigen Abmelde-Link enthält (Pflicht auf Broadcast-Streams).
+	var htmlBody, textBody string
+	isText := format.IsText(m.Format)
+	if isText {
+		// Reine Text-Mail: der Body geht unverändert raus, kein HTML-Gerüst.
+		// CRLF aus dem Browser-Textarea auf LF normalisieren.
+		textBody = withUnsubscribeFooterText(strings.ReplaceAll(m.BodySnapshot, "\r\n", "\n"))
+		if strings.TrimSpace(textBody) == "" {
+			return c.fail(ctx, m, "text body is empty")
+		}
+	} else {
+		var rerr error
+		htmlBody, rerr = templates.RenderNewsletterHTML(m.SubjectSnapshot, m.BodySnapshot, m.SubjectSnapshot)
+		if rerr != nil {
+			return c.fail(ctx, m, "render html: "+rerr.Error())
+		}
+		htmlBody = withUnsubscribeFooter(htmlBody)
 	}
-	// Abmelde-Footer mit Postmark-Unsubscribe-Token zentral anhängen, damit jede
-	// versendete Mail einen eindeutigen Abmelde-Link enthält (Broadcast-Stream).
-	htmlBody = withUnsubscribeFooter(htmlBody)
 
 	// Domain-Teil der Absender-Adresse in Punycode wandeln, falls Unicode (Umlaut)
 	// enthalten ist — Postmark akzeptiert im Domain-Teil nur ASCII. Lässt sich die
@@ -307,10 +353,21 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 			From:          from,
 			Subject:       m.SubjectSnapshot,
 			HtmlBody:      htmlBody,
+			TextBody:      textBody,
 			MessageStream: d.PostmarkStreamID,
 			TrackOpens:    conf.C.Postmark.TrackOpens,
 			TrackLinks:    conf.C.Postmark.TrackLinks,
 			Messages:      messages[start:end],
+		}
+		if isText {
+			// Open-Tracking braucht ein Zählpixel und funktioniert in einer
+			// reinen Text-Mail prinzipbedingt nicht; Link-Tracking würde die
+			// URLs im Text auf die Postmark-Redirect-Domain umschreiben und
+			// damit genau den Klartext-Charakter zerstören, wegen dem dieses
+			// Format gewählt wurde. Beides daher hart aus — unabhängig von der
+			// Config.
+			req.TrackOpens = false
+			req.TrackLinks = "None"
 		}
 		resp, err := c.postBulk(ctx, req)
 		if err != nil {

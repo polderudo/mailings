@@ -46,6 +46,8 @@ type MailTemplateTemplate struct {
 	CreatedAt       func() time.Time
 	UpdatedAt       func() null.Val[time.Time]
 	Archived        func() bool
+	Format          func() string
+	BodyText        func() string
 
 	r mailTemplateR
 	f *Factory
@@ -149,6 +151,14 @@ func (o MailTemplateTemplate) BuildSetter() *models.MailTemplateSetter {
 		val := o.Archived()
 		m.Archived = omit.From(val)
 	}
+	if o.Format != nil {
+		val := o.Format()
+		m.Format = omit.From(val)
+	}
+	if o.BodyText != nil {
+		val := o.BodyText()
+		m.BodyText = omit.From(val)
+	}
 
 	return m
 }
@@ -197,6 +207,12 @@ func (o MailTemplateTemplate) Build() *models.MailTemplate {
 	}
 	if o.Archived != nil {
 		m.Archived = o.Archived()
+	}
+	if o.Format != nil {
+		m.Format = o.Format()
+	}
+	if o.BodyText != nil {
+		m.BodyText = o.BodyText()
 	}
 
 	o.setModelRels(m)
@@ -408,6 +424,8 @@ func (m mailTemplateMods) RandomizeAllColumns(f *faker.Faker) MailTemplateMod {
 		MailTemplateMods.RandomCreatedAt(f),
 		MailTemplateMods.RandomUpdatedAt(f),
 		MailTemplateMods.RandomArchived(f),
+		MailTemplateMods.RandomFormat(f),
+		MailTemplateMods.RandomBodyText(f),
 	}
 }
 
@@ -752,6 +770,68 @@ func (m mailTemplateMods) RandomArchived(f *faker.Faker) MailTemplateMod {
 	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
 		o.Archived = func() bool {
 			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailTemplateMods) Format(val string) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Format = func() string { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailTemplateMods) FormatFunc(f func() string) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Format = f
+	})
+}
+
+// Clear any values for the column
+func (m mailTemplateMods) UnsetFormat() MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Format = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailTemplateMods) RandomFormat(f *faker.Faker) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.Format = func() string {
+			return random_string(f, "16")
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m mailTemplateMods) BodyText(val string) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.BodyText = func() string { return val }
+	})
+}
+
+// Set the Column from the function
+func (m mailTemplateMods) BodyTextFunc(f func() string) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.BodyText = f
+	})
+}
+
+// Clear any values for the column
+func (m mailTemplateMods) UnsetBodyText() MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.BodyText = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m mailTemplateMods) RandomBodyText(f *faker.Faker) MailTemplateMod {
+	return MailTemplateModFunc(func(_ context.Context, o *MailTemplateTemplate) {
+		o.BodyText = func() string {
+			return random_string(f)
 		}
 	})
 }

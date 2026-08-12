@@ -395,6 +395,8 @@ func (f *Factory) fromExistingMailTemplate(ctx context.Context, m *models.MailTe
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
 	o.Archived = func() bool { return m.Archived }
+	o.Format = func() string { return m.Format }
+	o.BodyText = func() string { return m.BodyText }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
@@ -463,6 +465,7 @@ func (f *Factory) fromExistingMailing(ctx context.Context, m *models.Mailing) *M
 	o.Archived = func() bool { return m.Archived }
 	o.PostmarkStatusError = func() string { return m.PostmarkStatusError }
 	o.SkippedCount = func() int32 { return m.SkippedCount }
+	o.Format = func() string { return m.Format }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))

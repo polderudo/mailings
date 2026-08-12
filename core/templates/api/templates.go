@@ -4,6 +4,7 @@ import (
 	"app/api/router"
 	"app/db"
 	"app/i18n"
+	"app/mail/format"
 	"app/mail/snippet"
 	"app/mq"
 	"app/mw"
@@ -49,7 +50,7 @@ func (m *api) TemplatesPage(c *mw.UserContext) error {
 }
 
 func (m *api) TemplateNewPage(c *mw.UserContext) error {
-	data := templatesview.TemplateFormData{IsNew: true, Snippets: snippet.All()}
+	data := templatesview.TemplateFormData{IsNew: true, Format: format.HTML, Snippets: snippet.All()}
 	if isHXRequest(c) {
 		return views.Render(c, templatesview.TemplateDetailPage(c.Lang, data))
 	}
@@ -70,7 +71,9 @@ func (m *api) TemplateDetailPage(c *mw.UserContext) error {
 		ID:       t.ID,
 		Name:     t.Name,
 		Subject:  t.Subject,
+		Format:   format.Normalize(t.Format),
 		BodyHTML: t.BodyHTML,
+		BodyText: t.BodyText,
 		Archived: t.Archived,
 		IsNew:    false,
 		Snippets: snippet.All(),
@@ -90,13 +93,19 @@ func (m *api) TemplateCreate(c *mw.UserContext) error {
 		)
 	}
 	subject := c.FormValue("subject")
+	// Beide Bodies werden immer gespeichert — format entscheidet nur, welcher
+	// versendet wird. So verliert ein Formatwechsel den anderen Inhalt nicht.
 	bodyHTML := c.FormValue("body_html")
+	bodyText := c.FormValue("body_text")
+	tplFormat := format.Normalize(c.FormValue("format"))
 
 	ctx := context.Background()
 	created, err := mq.MailTemplates.Insert(&mq.MailTemplateSetter{
 		Name:            omit.From(name),
 		Subject:         omit.From(subject),
+		Format:          omit.From(tplFormat),
 		BodyHTML:        omit.From(bodyHTML),
+		BodyText:        omit.From(bodyText),
 		CreatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedAt:       omitnull.From(time.Now()),
@@ -127,22 +136,30 @@ func (m *api) TemplateUpdate(c *mw.UserContext) error {
 	}
 	subject := c.FormValue("subject")
 	bodyHTML := c.FormValue("body_html")
+	bodyText := c.FormValue("body_text")
+	tplFormat := format.Normalize(c.FormValue("format"))
 
 	if err := t.Update(ctx, db.DBob, &mq.MailTemplateSetter{
 		Name:            omit.From(name),
 		Subject:         omit.From(subject),
+		Format:          omit.From(tplFormat),
 		BodyHTML:        omit.From(bodyHTML),
+		BodyText:        omit.From(bodyText),
 		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedAt:       omitnull.From(time.Now()),
 	}); err != nil {
 		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), err.Error())
 	}
 
+	// Aus dem aktualisierten Model rendern (t.Update schreibt die Werte zurück),
+	// damit die neu gerenderte Form exakt den gespeicherten Stand zeigt.
 	data := templatesview.TemplateFormData{
 		ID:       t.ID,
 		Name:     t.Name,
 		Subject:  t.Subject,
+		Format:   format.Normalize(t.Format),
 		BodyHTML: t.BodyHTML,
+		BodyText: t.BodyText,
 		Archived: t.Archived,
 		IsNew:    false,
 		Snippets: snippet.All(),

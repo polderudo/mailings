@@ -3,6 +3,7 @@ package templatesview
 import (
 	"app/api/router"
 	. "app/i18n"
+	"app/mail/format"
 	"app/mail/snippet"
 	"app/mq"
 	. "app/views/layout"
@@ -17,10 +18,15 @@ import (
 )
 
 type TemplateFormData struct {
-	ID       int32
-	Name     string
-	Subject  string
+	ID      int32
+	Name    string
+	Subject string
+	// Format entscheidet, welcher Body versendet wird: format.HTML → BodyHTML
+	// (TinyMCE), format.Text → BodyText (reine Textarea). Beide Bodies werden
+	// immer gespeichert, das Umschalten verliert also keinen Inhalt.
+	Format   string
 	BodyHTML string
+	BodyText string
 	Archived bool
 	IsNew    bool
 	Snippets []snippet.Snippet
@@ -98,6 +104,11 @@ templ TemplateForm(lang string, data TemplateFormData) {
 			"hx-post":   formAction,
 			"hx-swap":   "outerHTML",
 			"hx-target": "this",
+			// `fmt` steuert, welcher der beiden Body-Blöcke sichtbar ist. Der
+			// jeweils andere bleibt im DOM (nur display:none) — sein Inhalt geht
+			// beim Speichern trotzdem mit, damit ein Formatwechsel den anderen
+			// Body nicht verwirft.
+			"x-data": "{ fmt: '" + templateFormat(data) + "' }",
 		},
 	}) {
 		@uiform.Item() {
@@ -122,15 +133,39 @@ templ TemplateForm(lang string, data TemplateFormData) {
 			})
 		}
 		@uiform.Item() {
-			@uiform.Label(uiform.LabelProps{For: "template-editor"}) {
-				{ Trl(ctx, L.Templates.Body) }
+			@uiform.Label() {
+				{ Trl(ctx, L.Templates.MailFormat) }
 			}
-			// Das Source-Textarea trägt direkt name="body_html".
-			// TinyMCE's editor.save() / tinymce.triggerSave() schreibt
-			// den aktuellen Editor-Inhalt zurück hier hinein, und htmx
-			// liest diesen Wert beim Form-Submit via FormData ein.
-			@templateEditor(lang, data)
+			@templateFormatSwitch()
 		}
+		// HTML-Newsletter: das Source-Textarea trägt direkt name="body_html".
+		// TinyMCE's editor.save() / tinymce.triggerSave() schreibt den aktuellen
+		// Editor-Inhalt zurück hier hinein, und htmx liest diesen Wert beim
+		// Form-Submit via FormData ein.
+		//
+		// Der Block wird per x-show nur versteckt, nicht entfernt: TinyMCE bleibt
+		// initialisiert und der HTML-Body bleibt beim Speichern im Text-Modus
+		// erhalten.
+		<div x-show="fmt === 'html'" x-cloak>
+			@uiform.Item() {
+				@uiform.Label(uiform.LabelProps{For: "template-editor"}) {
+					{ Trl(ctx, L.Templates.Body) }
+				}
+				@templateEditor(lang, data)
+			}
+		</div>
+		// Reine Text-Mail: geht 1:1 als TextBody an Postmark, ohne HTML-Gerüst.
+		<div x-show="fmt === 'text'" x-cloak>
+			@uiform.Item() {
+				@uiform.Label(uiform.LabelProps{For: "template-body-text"}) {
+					{ Trl(ctx, L.Templates.TextBody) }
+				}
+				@templateTextEditor(data)
+				<p class="text-xs text-muted-foreground">
+					{ Trl(ctx, L.Templates.TheTextIsSentExactlyAsEntered) }
+				</p>
+			}
+		</div>
 		<div class="flex justify-between items-center pt-2">
 			if !data.IsNew {
 				<div class="flex gap-2">
@@ -164,6 +199,53 @@ templ TemplateForm(lang string, data TemplateFormData) {
 			})
 		</div>
 	}
+}
+
+// templateFormat liefert das Format der Vorlage, auf einen der beiden gültigen
+// Werte normalisiert. Neue Vorlagen und Bestandsdaten ohne gesetztes Format sind
+// HTML-Newsletter.
+func templateFormat(data TemplateFormData) string {
+	return format.Normalize(data.Format)
+}
+
+// templateFormatSwitch rendert die Format-Auswahl als native Radios. Sie tragen
+// `name="format"` (der Handler liest genau dieses Feld) und sind über x-model an
+// den Alpine-State der Form gebunden, der die beiden Body-Blöcke umschaltet.
+templ templateFormatSwitch() {
+	<div class="flex items-center gap-6">
+		// x-on:change stellt beim Zurückschalten auf HTML sicher, dass der Editor
+		// steht — war die Vorlage als Text-Mail geladen, wurde TinyMCE evtl. in
+		// einem versteckten Container initialisiert. Der Aufruf ist idempotent:
+		// eine intakte Instanz wird nicht angefasst.
+		<label class="flex items-center gap-2 text-sm cursor-pointer">
+			<input
+				type="radio"
+				name="format"
+				value={ format.HTML }
+				x-model="fmt"
+				x-on:change="$nextTick(() => window.__tmceTemplateBound && window.__tmceTemplateBound())"
+				class="accent-primary"
+			/>
+			{ Trl(ctx, L.Templates.HtmlNewsletter) }
+		</label>
+		<label class="flex items-center gap-2 text-sm cursor-pointer">
+			<input type="radio" name="format" value={ format.Text } x-model="fmt" class="accent-primary"/>
+			{ Trl(ctx, L.Templates.PlainText) }
+		</label>
+	</div>
+}
+
+// templateTextEditor ist die Eingabe für reine Text-Mails: eine schlichte
+// Textarea mit 35 Zeilen und Monospace-Schrift, damit Zeilenumbrüche so
+// aussehen, wie sie später versendet werden. Kein TinyMCE, keine Snippets.
+templ templateTextEditor(data TemplateFormData) {
+	<textarea
+		id="template-body-text"
+		name="body_text"
+		rows="35"
+		spellcheck="false"
+		class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm leading-5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+	>{ data.BodyText }</textarea>
 }
 
 // archiveLabel liefert "Wiederherstellen" wenn archiviert, sonst "Archivieren".

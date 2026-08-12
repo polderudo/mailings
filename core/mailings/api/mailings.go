@@ -6,6 +6,7 @@ import (
 	listsapi "app/core/lists/api"
 	"app/db"
 	"app/i18n"
+	"app/mail/format"
 	"app/mail/postmark"
 	"app/mq"
 	"app/mw"
@@ -151,14 +152,25 @@ func (m *api) MailingCreate(c *mw.UserContext) error {
 		return views.ToastError(c, i18n.TrLang(c.Lang, i18n.L.Ui.Error), "Template not found")
 	}
 
+	// Das Mailing friert Betreff + Body der Vorlage ein. Welcher der beiden
+	// Bodies (HTML oder Text) eingefroren wird, entscheidet das Format der
+	// Vorlage; es wandert mit in den Snapshot, damit der Versand später weiß,
+	// wie body_snapshot zu interpretieren ist.
+	tplFormat := format.Normalize(tpl.Format)
+	bodySnapshot := tpl.BodyHTML
+	if format.IsText(tplFormat) {
+		bodySnapshot = tpl.BodyText
+	}
+
 	created, err := mq.Mailings.Insert(&mq.MailingSetter{
 		Name:            omit.From(name),
 		TemplateID:      omit.From(int32(templateID)),
 		ListID:          omit.From(int32(listID)),
 		DomainID:        omit.From(int32(domainID)),
 		Status:          omit.From("draft"),
+		Format:          omit.From(tplFormat),
 		SubjectSnapshot: omit.From(tpl.Subject),
-		BodySnapshot:    omit.From(tpl.BodyHTML),
+		BodySnapshot:    omit.From(bodySnapshot),
 		CreatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedByUserID: omitnull.From(c.UserProfile.ID),
 		UpdatedAt:       omitnull.From(time.Now()),

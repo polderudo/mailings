@@ -326,6 +326,11 @@ var L = struct {
 		SearchTemplate int
 		InsertHtmlSnippet int
 		NoSnippetsAvailable int
+		MailFormat int
+		HtmlNewsletter int
+		PlainText int
+		TextBody int
+		TheTextIsSentExactlyAsEntered int
 	}
 	Ui struct {
 		Hello int
@@ -1037,6 +1042,11 @@ var L = struct {
 		SearchTemplate int
 		InsertHtmlSnippet int
 		NoSnippetsAvailable int
+		MailFormat int
+		HtmlNewsletter int
+		PlainText int
+		TextBody int
+		TheTextIsSentExactlyAsEntered int
 	}{
 		Templates: LK_templates,
 		AllTemplates: LK_all_templates,
@@ -1053,6 +1063,11 @@ var L = struct {
 		SearchTemplate: LK_search_template,
 		InsertHtmlSnippet: LK_insert_html_snippet,
 		NoSnippetsAvailable: LK_no_snippets_available,
+		MailFormat: LK_mail_format,
+		HtmlNewsletter: LK_html_newsletter,
+		PlainText: LK_plain_text,
+		TextBody: LK_text_body,
+		TheTextIsSentExactlyAsEntered: LK_the_text_is_sent_exactly_as_entered,
 	},
 	Ui: struct {
 		Hello int
