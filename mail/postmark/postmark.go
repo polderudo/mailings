@@ -3,6 +3,7 @@ package postmark
 import (
 	"app/conf"
 	"app/db"
+	"app/mail/address"
 	"app/mail/format"
 	"app/mq"
 	"app/templates"
@@ -118,9 +119,9 @@ type bulkMessage struct {
 }
 
 type bulkRequest struct {
-	From          string        `json:"From"`
-	ReplyTo       string        `json:"ReplyTo,omitempty"`
-	Subject       string        `json:"Subject"`
+	From    string `json:"From"`
+	ReplyTo string `json:"ReplyTo,omitempty"`
+	Subject string `json:"Subject"`
 	// HtmlBody/TextBody sind bei Postmark ein Entweder-oder ("If no HtmlBody
 	// specified Plain text email message"). Beide tragen omitempty, damit bei
 	// einer reinen Text-Mail KEIN leerer HtmlBody im JSON landet — sonst baut
@@ -289,12 +290,15 @@ func (c *Client) SendBulk(ctx context.Context, mailingID int32) error {
 	var invalid []*mq.MailListRecipient
 	var suppressed []*mq.MailListRecipient
 	for _, r := range recipients {
-		addr := strings.TrimSpace(r.Email)
+		// Unsichtbare Zeichen (Zero-Width-Space, Soft-Hyphen, NBSP ...) entfernen:
+		// net/mail lässt sie im lokalen Teil durch, Postmark verwirft deshalb den
+		// ganzen Bulk-Request (422/300 "Illegal email mailbox").
+		addr := address.Clean(r.Email)
 		if _, blocked := blacklist[strings.ToLower(addr)]; blocked {
 			suppressed = append(suppressed, r)
 			continue
 		}
-		if _, perr := netmail.ParseAddress(addr); perr != nil {
+		if _, perr := netmail.ParseAddress(addr); perr != nil || !address.ValidLocalPartOf(addr) {
 			invalid = append(invalid, r)
 			continue
 		}

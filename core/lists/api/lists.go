@@ -4,6 +4,7 @@ import (
 	"app/api/router"
 	"app/db"
 	"app/i18n"
+	"app/mail/address"
 	"app/mq"
 	"app/mw"
 	"app/views"
@@ -291,7 +292,8 @@ func (m *api) ListImport(c *mw.UserContext) error {
 
 	added := 0
 	for _, row := range imp.Data {
-		email := strings.TrimSpace(row.Email)
+		// Unsichtbare Zeichen (Zero-Width-Space etc.) aus Excel entfernen.
+		email := address.Clean(row.Email)
 		if email == "" || !strings.Contains(email, "@") {
 			continue
 		}
@@ -361,7 +363,7 @@ func (m *api) ListRecipientAdd(c *mw.UserContext) error {
 		return fmt.Errorf("list not found")
 	}
 
-	email := strings.TrimSpace(c.FormValue("email"))
+	email := address.Clean(c.FormValue("email"))
 	if email == "" || !strings.Contains(email, "@") {
 		return views.ToastError(c,
 			i18n.TrLang(c.Lang, i18n.L.Ui.Error),
